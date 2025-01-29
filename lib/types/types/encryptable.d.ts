@@ -8,17 +8,17 @@ export type EncryptableBool = {
     utype: FheUType.bool;
 };
 export type EncryptableUint8 = {
-    data: number;
+    data: string | bigint;
     securityZone?: number;
     utype: FheUType.uint8;
 };
 export type EncryptableUint16 = {
-    data: number;
+    data: string | bigint;
     securityZone?: number;
     utype: FheUType.uint16;
 };
 export type EncryptableUint32 = {
-    data: number;
+    data: string | bigint;
     securityZone?: number;
     utype: FheUType.uint32;
 };

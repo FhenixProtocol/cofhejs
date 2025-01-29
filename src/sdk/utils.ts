@@ -1,6 +1,34 @@
 import { isNumber } from "./validation.js";
 
-export const ValidateUintInRange = (
+export const toBigIntOrThrow = (value: bigint | string): bigint => {
+  if (typeof value === "bigint") {
+    return value;
+  }
+
+  try {
+    return BigInt(value);
+  } catch (error) {
+    throw new Error("Invalid input: Unable to convert to bigint");
+  }
+};
+
+export const validateBigIntInRange = (
+  value: bigint,
+  max: bigint,
+  min: bigint = 0n,
+): void => {
+  if (typeof value !== "bigint") {
+    throw new Error("Value must be of type bigint");
+  }
+
+  if (value > max || value < min) {
+    throw new Error(
+      `Value out of range: ${max} - ${min}, try a different uint type`,
+    );
+  }
+};
+
+export const validateUintInRange = (
   value: number,
   max: number,
   min: number,
@@ -24,8 +52,17 @@ export const fromHexString = (hexString: string): Uint8Array => {
 export const toHexString = (bytes: Uint8Array) =>
   bytes.reduce((str, byte) => str + byte.toString(16).padStart(2, "0"), "");
 
-export function toBigInt(value: Uint8Array): bigint {
-  return ethersToBigInt(value);
+export function toBigInt(value: number | string | bigint | Uint8Array): bigint {
+  if (typeof value === "string") {
+    return ethersToBigInt(fromHexString(value));
+  } else if (typeof value === "number") {
+    return BigInt(value);
+  } else if (typeof value === "object") {
+    // Uint8Array
+    return ethersToBigInt(value);
+  } else {
+    return value as bigint;
+  }
 }
 
 export function toBeArray(value: bigint | number): Uint8Array {
@@ -35,6 +72,20 @@ export function toBeArray(value: bigint | number): Uint8Array {
 export function isAddress(address: string) {
   if (!_isAddress(address)) {
     throw new Error(`Address ${address} is not valid EVM address`);
+  }
+}
+
+export function toNumber(value: number | string | bigint): number {
+  try {
+    switch (typeof value) {
+      case "string":
+        return parseInt(value);
+      case "bigint":
+        return Number(value);
+    }
+    return value;
+  } catch (error) {
+    throw new Error(`Cannot convert ${value} to number`);
   }
 }
 

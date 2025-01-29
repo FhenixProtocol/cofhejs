@@ -21,7 +21,20 @@ import {
   EncryptedAddress,
   EncryptionTypes,
 } from "../types";
-import { fromHexString, toBigInt } from "./utils.js";
+import {
+  fromHexString,
+  toBigInt,
+  toBigIntOrThrow,
+  validateBigIntInRange,
+} from "./utils.js";
+import {
+  MAX_UINT8,
+  MAX_UINT16,
+  MAX_UINT32,
+  MAX_UINT64,
+  MAX_UINT128,
+  MAX_UINT256,
+} from "./consts.js";
 
 /**
  * Encrypts a Uint8 value using TFHE (Fast Fully Homomorphic Encryption over the Torus).
@@ -47,20 +60,24 @@ export const encrypt_bool = (
 
 /**
  * Encrypts a Uint8 value using TFHE (Fast Fully Homomorphic Encryption over the Torus).
- * @param {number} value - The Uint8 value to encrypt.
+ * @param {string | bigint} value - The Uint8 value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param securityZone - The security zone to encrypt the value on.
  * @returns {EncryptedUint8} - The encrypted value serialized as Uint8Array.
  */
 export const encrypt_uint8 = (
-  value: number,
+  value: string | bigint,
   publicKey: TfheCompactPublicKey,
   securityZone: number = 0,
 ): EncryptedUint8 => {
+  const bint = toBigIntOrThrow(value);
+  validateBigIntInRange(bint, MAX_UINT8);
+
   const encrypted = CompactFheUint8.encrypt_with_compact_public_key(
-    value,
+    parseInt(bint.toString()),
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -69,20 +86,24 @@ export const encrypt_uint8 = (
 
 /**
  * Encrypts a Uint16 value using TFHE.
- * @param {number} value - The Uint16 value to encrypt.
+ * @param {string | bigint} value - The Uint16 value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param securityZone - The security zone to encrypt the value on.
  * @returns {EncryptedUint16} - The encrypted value serialized as Uint8Array.
  */
 export const encrypt_uint16 = (
-  value: number,
+  value: string | bigint,
   publicKey: TfheCompactPublicKey,
   securityZone: number = 0,
 ): EncryptedUint16 => {
+  const bint = toBigIntOrThrow(value);
+  validateBigIntInRange(bint, MAX_UINT16);
+
   const encrypted = CompactFheUint16.encrypt_with_compact_public_key(
-    value,
+    parseInt(bint.toString()),
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -91,20 +112,24 @@ export const encrypt_uint16 = (
 
 /**
  * Encrypts a Uint32 value using TFHE.
- * @param {number} value - The Uint32 value to encrypt.
+ * @param {string | bigint} value - The Uint32 value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param securityZone - The security zone to encrypt the value on.
  * @returns {EncryptedUint32} - The encrypted value serialized as Uint8Array.
  */
 export const encrypt_uint32 = (
-  value: number,
+  value: string | bigint,
   publicKey: TfheCompactPublicKey,
   securityZone: number = 0,
 ): EncryptedUint32 => {
+  const bint = toBigIntOrThrow(value);
+  validateBigIntInRange(bint, MAX_UINT32);
+
   const encrypted = CompactFheUint32.encrypt_with_compact_public_key(
-    value,
+    parseInt(bint.toString()),
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -113,26 +138,24 @@ export const encrypt_uint32 = (
 
 /**
  * Encrypts a Uint64 value using TFHE.
- * @param {number} value - The Uint64 value to encrypt.
+ * @param {string | bigint} value - The Uint64 value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param securityZone - The security zone to encrypt the value on.
  * @returns {EncryptedUint64} - The encrypted value serialized as Uint8Array.
  */
 export const encrypt_uint64 = (
-  value: bigint | string,
+  value: string | bigint,
   publicKey: TfheCompactPublicKey,
   securityZone: number = 0,
 ): EncryptedUint64 => {
-  if (typeof value === "string") {
-    value = toBigInt(fromHexString(value));
-  } else {
-    value = value as bigint;
-  }
+  const bint = toBigIntOrThrow(value);
+  validateBigIntInRange(bint, MAX_UINT64);
 
   const encrypted = CompactFheUint64.encrypt_with_compact_public_key(
-    value,
+    bint,
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -141,26 +164,24 @@ export const encrypt_uint64 = (
 
 /**
  * Encrypts a Uint128 value using TFHE.
- * @param {bigint} value - The Uint128 value to encrypt.
+ * @param {string | bigint} value - The Uint128 value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param securityZone - The security zone to encrypt the value on.
  * @returns {EncryptedUint128} - The encrypted value serialized as Uint8Array.
  */
 export const encrypt_uint128 = (
-  value: bigint | string,
+  value: string | bigint,
   publicKey: TfheCompactPublicKey,
   securityZone: number = 0,
 ): EncryptedUint128 => {
-  if (typeof value === "string") {
-    value = toBigInt(fromHexString(value));
-  } else {
-    value = value as bigint;
-  }
+  const bint = toBigIntOrThrow(value);
+  validateBigIntInRange(bint, MAX_UINT128);
 
   const encrypted = CompactFheUint128.encrypt_with_compact_public_key(
-    value,
+    bint,
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -169,26 +190,24 @@ export const encrypt_uint128 = (
 
 /**
  * Encrypts a Uint256 value using TFHE.
- * @param {bigint} value - The Uint256 value to encrypt.
+ * @param {string | bigint} value - The Uint256 value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param securityZone - The security zone to encrypt the value on.
  * @returns {EncryptedUint256} - The encrypted value serialized as Uint8Array.
  */
 export const encrypt_uint256 = (
-  value: bigint | string,
+  value: string | bigint,
   publicKey: TfheCompactPublicKey,
   securityZone: number = 0,
 ): EncryptedUint256 => {
-  if (typeof value === "string") {
-    value = toBigInt(fromHexString(value));
-  } else {
-    value = value as bigint;
-  }
+  const bint = toBigIntOrThrow(value);
+  validateBigIntInRange(bint, MAX_UINT256);
 
   const encrypted = CompactFheUint256.encrypt_with_compact_public_key(
-    value,
+    bint,
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -216,6 +235,7 @@ export const encrypt_address = (
     value,
     publicKey,
   );
+
   return {
     data: encrypted.serialize(),
     securityZone,
@@ -223,7 +243,7 @@ export const encrypt_address = (
 };
 /**
  * Encrypts a numeric value using TFHE according to the specified encryption type.
- * @param {number} value - The numeric value to encrypt.
+ * @param {bigint | string} value - The numeric value to encrypt.
  * @param {TfheCompactPublicKey} publicKey - The public key used for encryption.
  * @param {EncryptionTypes} type - The encryption type (uint8, uint16, uint32).
  * @param securityZone - The security zone to encrypt the value on.
@@ -231,7 +251,7 @@ export const encrypt_address = (
  * @throws {Error} - Throws an error if an invalid type is specified.
  */
 export const encrypt = (
-  value: number,
+  value: bigint | string,
   publicKey: TfheCompactPublicKey,
   type: EncryptionTypes = EncryptionTypes.uint8,
   securityZone: number = 0,
@@ -246,13 +266,13 @@ export const encrypt = (
     case EncryptionTypes.uint32:
       return encrypt_uint32(value, publicKey, securityZone);
     case EncryptionTypes.uint64:
-      return encrypt_uint64(value.toString(16), publicKey, securityZone);
+      return encrypt_uint64(value, publicKey, securityZone);
     case EncryptionTypes.uint128:
-      return encrypt_uint128(value.toString(16), publicKey, securityZone);
+      return encrypt_uint128(value, publicKey, securityZone);
     case EncryptionTypes.uint256:
-      return encrypt_uint256(value.toString(16), publicKey, securityZone);
+      return encrypt_uint256(value, publicKey, securityZone);
     case EncryptionTypes.address:
-      return encrypt_address(value.toString(16), publicKey, securityZone);
+      return encrypt_address(value, publicKey, securityZone);
     default:
       throw new Error("Invalid type");
   }
