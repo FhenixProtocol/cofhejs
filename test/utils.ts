@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { JsonRpcProvider, AbiCoder, ethers } from "ethers";
-import { AbstractProvider, AbstractSigner } from "../lib/esm";
+import { AbstractProvider, AbstractSigner } from "../src/types";
 
 // Initialize genesis accounts
 const mnemonics = [
@@ -25,18 +25,20 @@ export async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function waitForChainToStart(url: string) {
+export async function waitForZkVerifierToStart(url: string) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      const client = new JsonRpcProvider(url);
-      console.log(`connecting to ${url}...`);
-      const networkId = await client.getNetwork();
-      return Number(networkId.chainId);
+      console.log(`connecting to ${url}/GetNetworkPublickKey`);
+      await fetch(`${url}/GetNetworkPublickKey`, {
+        method: "POST",
+      });
+      console.log(`connected!`);
+      return;
     } catch (e) {
       console.log(`client not ready`);
     }
-    await sleep(250);
+    await sleep(500);
   }
 }
 

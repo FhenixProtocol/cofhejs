@@ -1,6 +1,6 @@
 import { expect, describe, it } from "vitest";
-import { GenerateSealingKey, SealingKey } from "../lib/esm";
 import { fromHexString } from "./utils";
+import { GenerateSealingKey, SealingKey } from "../src/sdk/sealing";
 
 describe("tests sealing and unsealing using SealingKey", () => {
   it("decrypts a hex value", async () => {

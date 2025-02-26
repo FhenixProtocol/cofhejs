@@ -1,5 +1,5 @@
-export { SealingKey, GenerateSealingKey } from "./sdk/sealing.js";
-export { createTfheKeypair, createTfhePublicKey } from "./sdk/keygen.js";
+export { SealingKey, GenerateSealingKey } from "./sdk/sealing";
+export { createTfheKeypair, createTfhePublicKey } from "./sdk/keygen";
 
 export * from "./types";
 export * from "./sdk/permit";

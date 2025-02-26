@@ -3,21 +3,18 @@ import { getAddress, id, keccak256, ZeroAddress } from "ethers";
 import {
   getSignatureDomain,
   getSignatureTypesAndMessage,
-  PermitV2SignaturePrimaryType,
+  PermitSignaturePrimaryType,
   SignatureTypes,
 } from "./generate";
-import {
-  FullyFormedPermitV2Validator,
-  PermitV2ParamsValidator,
-} from "./permit.z";
+import { FullyFormedPermitValidator, PermitParamsValidator } from "./permit.z";
 import { GenerateSealingKey, SealingKey } from "../sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils.hardhat";
 import {
-  PermissionV2,
-  PermitV2Interface,
-  PermitV2Metadata,
-  PermitV2Options,
-  SerializedPermitV2,
+  Permission,
+  PermitInterface,
+  PermitMetadata,
+  PermitOptions,
+  SerializedPermit,
   MappedUnsealedTypes,
   getAsSealedItem,
   isSealedBool,
@@ -26,13 +23,13 @@ import {
   AbstractSigner,
 } from "../../types";
 
-export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
+export class Permit implements PermitInterface, PermitMetadata {
   /**
    * Name for this permit, for organization and UI usage, not included in signature.
    */
   public name: string;
   /**
-   * The type of the PermitV2 (self / sharing)
+   * The type of the Permit (self / sharing)
    * (self) Permit that will be signed and used by the issuer
    * (sharing) Permit that is signed by the issuer, but intended to be shared with recipient
    * (recipient) Permit that has been received, and signed by the recipient
@@ -46,14 +43,6 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
    * (base) Expiration timestamp
    */
   public expiration: number;
-  /**
-   * (base) List of contract addresses that can be accessed with this permission
-   */
-  public contracts: string[];
-  /**
-   * (base) List of project identifiers (strings) that can be accessed
-   */
-  public projects: string[];
   /**
    * (sharing) The user that this permission will be shared with
    * ** optional, use `address(0)` to disable **
@@ -78,8 +67,8 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
   /**
    * (base) `signTypedData` signature created by `issuer`.
    * (base) Shared- and Self- permissions differ in signature format: (`sealingKey` absent in shared signature)
-   *   (non-sharing) < issuer, expiration, contracts, projects, recipient, validatorId, validatorContract, sealingKey >
-   *   (sharing)     < issuer, expiration, contracts, projects, recipient, validatorId, validatorContract >
+   *   (non-sharing) < issuer, expiration, recipient, validatorId, validatorContract, sealingKey >
+   *   (sharing)     < issuer, expiration, recipient, validatorId, validatorContract >
    */
   public issuerSignature: string;
   /**
@@ -96,15 +85,13 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
   public _signedChainId: string | undefined = undefined;
 
   public constructor(
-    options: PermitV2Interface,
-    metadata?: Partial<PermitV2Metadata>,
+    options: PermitInterface,
+    metadata?: Partial<PermitMetadata>,
   ) {
     this.name = options.name;
     this.type = options.type;
     this.issuer = options.issuer;
     this.expiration = options.expiration;
-    this.contracts = options.contracts;
-    this.projects = options.projects;
     this.recipient = options.recipient;
     this.validatorId = options.validatorId;
     this.validatorContract = options.validatorContract;
@@ -115,16 +102,16 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
     this._signedChainId = metadata?._signedChainId;
   }
 
-  static async create(options: PermitV2Options) {
+  static async create(options: PermitOptions) {
     const {
       success,
       data: parsed,
       error,
-    } = PermitV2ParamsValidator.safeParse(options);
+    } = PermitParamsValidator.safeParse(options);
 
     if (!success) {
       throw new Error(
-        "PermitV2 :: create :: Parsing PermitV2Options failed " +
+        "Permit :: create :: Parsing PermitOptions failed " +
           JSON.stringify(error, null, 2),
       );
     }
@@ -137,18 +124,18 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
           )
         : await GenerateSealingKey();
 
-    return new PermitV2({
+    return new Permit({
       ...parsed,
       sealingPair,
     });
   }
 
   static async createAndSign(
-    options: PermitV2Options,
+    options: PermitOptions,
     chainId: string | undefined,
     signer: AbstractSigner | undefined,
   ) {
-    const permit = await PermitV2.create(options);
+    const permit = await Permit.create(options);
     await permit.sign(chainId, signer);
     return permit;
   }
@@ -158,18 +145,18 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
   };
 
   /**
-   * Creates a `PermitV2` from a serialized permit, hydrating methods and classes
+   * Creates a `Permit` from a serialized permit, hydrating methods and classes
    * NOTE: Does not return a stringified permit
    *
-   * @param {SerializedPermitV2} - Permit structure excluding classes
-   * @returns {PermitV2} - New instance of PermitV2 class
+   * @param {SerializedPermit} - Permit structure excluding classes
+   * @returns {Permit} - New instance of Permit class
    */
   static deserialize = ({
     _signedChainId,
     sealingPair,
     ...permit
-  }: SerializedPermitV2) => {
-    return new PermitV2(
+  }: SerializedPermit) => {
+    return new Permit(
       {
         ...permit,
         sealingPair: new SealingKey(
@@ -183,22 +170,20 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
     );
   };
 
-  static validate = (permit: PermitV2) => {
-    return FullyFormedPermitV2Validator.safeParse(permit);
+  static validate = (permit: Permit) => {
+    return FullyFormedPermitValidator.safeParse(permit);
   };
 
   /**
    * Utility to extract the public data from a permit.
    * Used in `serialize`, `getPermission`, `getHash` etc
    */
-  getInterface = (): PermitV2Interface => {
+  getInterface = (): PermitInterface => {
     return {
       name: this.name,
       type: this.type,
       issuer: this.issuer,
       expiration: this.expiration,
-      contracts: this.contracts,
-      projects: this.projects,
       recipient: this.recipient,
       validatorId: this.validatorId,
       validatorContract: this.validatorContract,
@@ -219,8 +204,6 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
       expiration: this.expiration,
     };
 
-    if (this.contracts.length > 0) cleanedPermit.contracts = this.contracts;
-    if (this.projects.length > 0) cleanedPermit.projects = this.projects;
     if (this.recipient !== ZeroAddress)
       cleanedPermit.recipient = this.recipient;
     if (this.validatorId !== 0) cleanedPermit.validatorId = this.validatorId;
@@ -236,7 +219,7 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
    * Returns a serializable permit instance, removing classes and methods.
    * NOTE: Does not return a stringified permit
    */
-  serialize = (): SerializedPermitV2 => {
+  serialize = (): SerializedPermit => {
     const { sealingPair, ...permit } = this.getInterface();
     return {
       ...permit,
@@ -254,18 +237,17 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
    * `permit.sealingPair` is removed and replaced by `permit.sealingPair.publicKey` in the `sealingKey` field.
    *
    * @permit {boolean} skipValidation - Flag to prevent running validation on the permit before returning the extracted permission. Used internally.
-   * @returns {PermissionV2}
+   * @returns {Permission}
    */
-  getPermission = (skipValidation = false): PermissionV2 => {
+  getPermission = (skipValidation = false): Permission => {
     const permitData = this.getInterface();
 
     if (!skipValidation) {
-      const validationResult =
-        FullyFormedPermitV2Validator.safeParse(permitData);
+      const validationResult = FullyFormedPermitValidator.safeParse(permitData);
 
       if (!validationResult.success) {
         throw new Error(
-          `PermitV2 :: getPermission :: permit validation failed - ${JSON.stringify(
+          `Permit :: getPermission :: permit validation failed - ${JSON.stringify(
             validationResult.error,
             null,
             2,
@@ -293,8 +275,6 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
           type: this.type,
           issuer: this.issuer,
           expiration: this.expiration,
-          contracts: this.contracts,
-          projects: this.projects,
           recipient: this.recipient,
           validatorId: this.validatorId,
           validatorContract: this.validatorContract,
@@ -308,7 +288,7 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
    */
   getSignatureParams = (
     chainId: string,
-    primaryType: PermitV2SignaturePrimaryType,
+    primaryType: PermitSignaturePrimaryType,
   ) => {
     return {
       domain: getSignatureDomain(chainId),
@@ -335,17 +315,17 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
   ) => {
     if (chainId == null)
       throw new Error(
-        "PermitV2 :: sign - chainId undefined, cannot sign a permit with an unknown chainId",
+        "Permit :: sign - chainId undefined, cannot sign a permit with an unknown chainId",
       );
     if (signer == null)
       throw new Error(
-        "PermitV2 :: sign - signer undefined, you must pass in a `signer` for the connected user to create a permitV2 signature",
+        "Permit :: sign - signer undefined, you must pass in a `signer` for the connected user to create a permit signature",
       );
 
-    let primaryType: PermitV2SignaturePrimaryType = "PermissionedV2IssuerSelf";
-    if (this.type === "self") primaryType = "PermissionedV2IssuerSelf";
-    if (this.type === "sharing") primaryType = "PermissionedV2IssuerShared";
-    if (this.type === "recipient") primaryType = "PermissionedV2Recipient";
+    let primaryType: PermitSignaturePrimaryType = "PermissionedIssuerSelf";
+    if (this.type === "self") primaryType = "PermissionedIssuerSelf";
+    if (this.type === "sharing") primaryType = "PermissionedIssuerShared";
+    if (this.type === "recipient") primaryType = "PermissionedRecipient";
 
     const { domain, types, message } = this.getSignatureParams(
       chainId,
@@ -425,55 +405,6 @@ export class PermitV2 implements PermitV2Interface, PermitV2Metadata {
     // Primitive
     return item;
   }
-
-  /**
-   * Check if permit satisfies the requirements param.
-   * Permit must satisfy either the contracts list or the projects list
-   *
-   * @param {{contracts?: string[], projects?: string[]}} requirements - Lists of contract and project requirements.
-   * @returns {satisfies: boolean, unsatisfiedContracts, unsatisfiedProjects} - satisfied if either req list is fulfilled.
-   */
-  getSatisfies = (requirements: {
-    contracts?: string[];
-    projects?: string[];
-  }):
-    | { satisfies: true; unsatisfiedContracts: null; unsatisfiedProjects: null }
-    | {
-        satisfies: false;
-        unsatisfiedContracts: string[];
-        unsatisfiedProjects: string[];
-      } => {
-    let contractsSatisfied = true;
-    const unsatisfiedContracts: string[] = [];
-    for (const contract in requirements.contracts) {
-      if (!this.contracts.includes(contract)) {
-        contractsSatisfied = false;
-        unsatisfiedContracts.push(contract);
-      }
-    }
-
-    let projectsSatisfied = true;
-    const unsatisfiedProjects: string[] = [];
-    for (const project in requirements.projects) {
-      if (!this.projects.includes(project)) {
-        projectsSatisfied = false;
-        unsatisfiedProjects.push(project);
-      }
-    }
-
-    if (contractsSatisfied || projectsSatisfied)
-      return {
-        satisfies: true,
-        unsatisfiedContracts: null,
-        unsatisfiedProjects: null,
-      };
-
-    return {
-      satisfies: false,
-      unsatisfiedContracts,
-      unsatisfiedProjects,
-    };
-  };
 
   /**
    * Returns whether the active party has created their signature.

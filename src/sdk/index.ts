@@ -1,42 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { toHexString } from "./utils.js";
-import { chainIsHardhat, hardhatMockEncrypt } from "./utils.hardhat.js";
-import { PermitV2, permitStore, PermitV2ParamsValidator } from "./permit";
-import { isString } from "./validation.js";
+import { Permit, permitStore, PermitParamsValidator } from "./permit";
+import { isString } from "./validation";
 import {
   _sdkStore,
   _store_getConnectedChainFheKey,
+  _store_getCrs,
   _store_initialize,
   SdkStore,
-} from "./store.js";
+} from "./store";
 import {
-  encrypt_bool as tfhe_encrypt_bool,
-  encrypt_uint8 as tfhe_encrypt_uint8,
-  encrypt_uint16 as tfhe_encrypt_uint16,
-  encrypt_uint32 as tfhe_encrypt_uint32,
-  encrypt_uint64 as tfhe_encrypt_uint64,
-  encrypt_uint128 as tfhe_encrypt_uint128,
-  encrypt_uint256 as tfhe_encrypt_uint256,
-  encrypt_address as tfhe_encrypt_address,
-} from "./encrypt.js";
-import { InitFhevm } from "./init.js";
-import {
-  CoFheEncryptedNumber,
-  FheUType,
-  MappedCoFheEncryptedTypes,
+  CoFheInItem,
+  Encrypted_Inputs,
   isEncryptableItem,
-  PermitV2Options,
-  PermitV2Interface,
-  PermissionV2,
+  PermitOptions,
+  PermitInterface,
+  Permission,
   Result,
   ResultErr,
   ResultOk,
   MappedUnsealedTypes,
   InitializationParams,
+  EncryptableItem,
 } from "../types";
+import { zkPack, zkProve, zkVerify } from "./zkPoK";
+import { initTfhe } from "./tfhe-wrapper";
 
 /**
- * Initializes the `fhenixsdk` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
+ * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
  * Initializes `fhevm` client FHE wasm module and fetches the provided chain's FHE publicKey.
  * If a valid signer is provided, a `permit/permission` is generated automatically
  */
@@ -45,9 +35,9 @@ const initialize = async (
     ignoreErrors?: boolean;
     generatePermit?: boolean;
   },
-): Promise<Result<PermitV2 | undefined>> => {
+): Promise<Result<Permit | undefined>> => {
   // Initialize the fhevm
-  await InitFhevm().catch((err: unknown) => {
+  await initTfhe(params.target).catch((err: unknown) => {
     if (params.ignoreErrors) {
       return undefined;
     } else {
@@ -93,24 +83,22 @@ const _checkInitialized = (
   },
 ) => {
   if (options?.fheKeys !== false && !state.fheKeysInitialized) {
-    return ResultErr(
-      "fhenixsdk not initialized. Use `fhenixsdk.initialize(...)`.",
-    );
+    return ResultErr("cofhejs not initialized. Use `cofhejs.initialize(...)`.");
   }
 
   if (options?.coFheUrl !== false && !state.coFheUrl)
     return ResultErr(
-      "fhenixsdk not initialized with a coFheUrl. Set `coFheUrl` in `fhenixsdk.initialize`.",
+      "cofhejs not initialized with a coFheUrl. Set `coFheUrl` in `cofhejs.initialize`.",
     );
 
   if (options?.provider !== false && !state.providerInitialized)
     return ResultErr(
-      "fhenixsdk not initialized with valid provider. Use `fhenixsdk.initialize(...)` with a valid provider that satisfies `AbstractProvider`.",
+      "cofhejs not initialized with valid provider. Use `cofhejs.initialize(...)` with a valid provider that satisfies `AbstractProvider`.",
     );
 
   if (options?.signer !== false && !state.signerInitialized)
     return ResultErr(
-      "fhenixsdk not initialized with a valid signer. Use `fhenixsdk.initialize(...)` with a valid signer that satisfies `AbstractSigner`.",
+      "cofhejs not initialized with a valid signer. Use `cofhejs.initialize(...)` with a valid signer that satisfies `AbstractSigner`.",
     );
 
   return ResultOk(null);
@@ -121,33 +109,31 @@ const _checkInitialized = (
 /**
  * Creates a new permit with options, prompts user for signature.
  * Handles all `permit.type`s, and prompts for the correct signature type.
- * The created PermitV2 will be inserted into the store and marked as the active permit.
- * NOTE: This is a wrapper around `PermitV2.create` and `PermitV2.sign`
+ * The created Permit will be inserted into the store and marked as the active permit.
+ * NOTE: This is a wrapper around `Permit.create` and `Permit.sign`
  *
- * @param {PermitV2Options} options - Partial PermitV2 fields to create the Permit with, if no options provided will be filled with the defaults:
- * { type: "self", issuer: initializedUserAddress, projects: initializedProjects, contracts: initializedContracts }
- * @returns {Result<PermitV2>} - Newly created PermitV2 as a Result object
+ * @param {PermitOptions} options - Partial Permit fields to create the Permit with, if no options provided will be filled with the defaults:
+ * { type: "self", issuer: initializedUserAddress }
+ * @returns {Result<Permit>} - Newly created Permit as a Result object
  */
 const createPermit = async (
-  options?: PermitV2Options,
-): Promise<Result<PermitV2>> => {
+  options?: PermitOptions,
+): Promise<Result<Permit>> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
   if (!initialized.success)
     return ResultErr(`${createPermit.name} :: ${initialized.error}`);
 
-  const optionsWithDefaults: PermitV2Options = {
+  const optionsWithDefaults: PermitOptions = {
     type: "self",
     issuer: state.account,
-    contracts: state.accessRequirements.contracts,
-    projects: state.accessRequirements.projects,
     ...options,
   };
 
-  let permit: PermitV2;
+  let permit: Permit;
   try {
-    permit = await PermitV2.createAndSign(
+    permit = await Permit.createAndSign(
       optionsWithDefaults,
       state.chainId,
       state.signer,
@@ -165,14 +151,14 @@ const createPermit = async (
 /**
  * Imports a fully formed existing permit, expected to be valid.
  * Does not ask for user signature, expects to already be populated.
- * Will throw an error if the imported permit is invalid, see `PermitV2.isValid`.
- * The imported PermitV2 will be inserted into the store and marked as the active permit.
+ * Will throw an error if the imported permit is invalid, see `Permit.isValid`.
+ * The imported Permit will be inserted into the store and marked as the active permit.
  *
- * @param {string | PermitV2Interface} imported - Permit to import as a text string or PermitV2Interface
+ * @param {string | PermitInterface} imported - Permit to import as a text string or PermitInterface
  */
 const importPermit = async (
-  imported: string | PermitV2Interface,
-): Promise<Result<PermitV2>> => {
+  imported: string | PermitInterface,
+): Promise<Result<Permit>> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -192,7 +178,7 @@ const importPermit = async (
     success,
     data: parsedPermit,
     error: permitParsingError,
-  } = PermitV2ParamsValidator.safeParse(imported as PermitV2Interface);
+  } = PermitParamsValidator.safeParse(imported as PermitInterface);
   if (!success) {
     const errorString = Object.entries(permitParsingError.flatten().fieldErrors)
       .map(([field, err]) => `- ${field}: ${err}`)
@@ -210,9 +196,9 @@ const importPermit = async (
     }
   }
 
-  let permit: PermitV2;
+  let permit: Permit;
   try {
-    permit = await PermitV2.create(parsedPermit as PermitV2Interface);
+    permit = await Permit.create(parsedPermit as PermitInterface);
   } catch (e) {
     return ResultErr(`importPermit :: ${e}`);
   }
@@ -235,9 +221,9 @@ const importPermit = async (
  * If the hash is not found in the stored permits store, throws an error.
  * The matched permit will be marked as the active permit.
  *
- * @param {string} hash - The `PermitV2.getHash` of the target permit.
+ * @param {string} hash - The `Permit.getHash` of the target permit.
  */
-const selectActivePermit = (hash: string): Result<PermitV2> => {
+const selectActivePermit = (hash: string): Result<Permit> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -259,10 +245,10 @@ const selectActivePermit = (hash: string): Result<PermitV2> => {
  * Retrieves a stored permit based on its hash.
  * If no hash is provided, the currently active permit will be retrieved.
  *
- * @param {string} hash - Optional `PermitV2.getHash` of the permit.
- * @returns {Result<PermitV2>} - The active permit or permit associated with `hash` as a Result object.
+ * @param {string} hash - Optional `Permit.getHash` of the permit.
+ * @returns {Result<Permit>} - The active permit or permit associated with `hash` as a Result object.
  */
-const getPermit = (hash?: string): Result<PermitV2> => {
+const getPermit = (hash?: string): Result<Permit> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -287,12 +273,12 @@ const getPermit = (hash?: string): Result<PermitV2> => {
 /**
  * Retrieves a stored permission based on the permit's hash.
  * If no hash is provided, the currently active permit will be used.
- * The `PermissionV2` is extracted from the permit.
+ * The `Permission` is extracted from the permit.
  *
  * @param {string} hash - Optional hash of the permission to get, defaults to active permit's permission
- * @returns {Result<PermissionV2>} - The active permission or permission associated with `hash`, as a result object.
+ * @returns {Result<Permission>} - The active permission or permission associated with `hash`, as a result object.
  */
-const getPermission = (hash?: string): Result<PermissionV2> => {
+const getPermission = (hash?: string): Result<Permission> => {
   const permitResult = getPermit(hash);
   if (!permitResult.success)
     return ResultErr(`${getPermission.name} :: ${permitResult.error}`);
@@ -302,9 +288,9 @@ const getPermission = (hash?: string): Result<PermissionV2> => {
 
 /**
  * Exports all stored permits.
- * @returns {Result<Record<string, PermitV2>>} - All stored permits.
+ * @returns {Result<Record<string, Permit>>} - All stored permits.
  */
-const getAllPermits = (): Result<Record<string, PermitV2>> => {
+const getAllPermits = (): Result<Record<string, Permit>> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -316,21 +302,78 @@ const getAllPermits = (): Result<Record<string, PermitV2>> => {
 
 // Encrypt
 
-/**
- * Encrypts a numeric value according to the specified encryption type or the most efficient one based on the value.
- * Useful when not using `Encryptable` utility structures.
- * @param {item} value - The numeric value to encrypt.
- * @param {EncryptionTypes} type - Optional. The encryption type (uint8, uint16, uint32).
- * @param securityZone - The security zone for which to encrypt the value (default 0).
- * @returns {EncryptedNumber} - The encrypted value serialized as Uint8Array. Use the .data property to access the Uint8Array.
- */
+function extractEncryptables<T>(item: T): EncryptableItem[];
+function extractEncryptables<T extends any[]>(item: [...T]): EncryptableItem[];
+function extractEncryptables<T>(item: T) {
+  if (isEncryptableItem(item)) {
+    return item;
+  }
+
+  // Object | Array
+  if (typeof item === "object" && item !== null) {
+    if (Array.isArray(item)) {
+      // Array - recurse
+      return item.flatMap((nestedItem) => extractEncryptables(nestedItem));
+    } else {
+      // Object - recurse
+      return Object.values(item).flatMap((value) => extractEncryptables(value));
+    }
+  }
+
+  return [];
+}
+
+function replaceEncryptables<T>(
+  item: T,
+  encryptedItems: CoFheInItem[],
+): [Encrypted_Inputs<T>, CoFheInItem[]];
+function replaceEncryptables<T extends any[]>(
+  item: [...T],
+  encryptedItems: CoFheInItem[],
+): [...Encrypted_Inputs<T>, CoFheInItem[]];
+function replaceEncryptables<T>(item: T, encryptedItems: CoFheInItem[]) {
+  if (isEncryptableItem(item)) {
+    return [encryptedItems[0], encryptedItems.slice(1)];
+  }
+
+  // Object | Array
+  if (typeof item === "object" && item !== null) {
+    if (Array.isArray(item)) {
+      // Array - recurse
+      return item.reduce<[any[], CoFheInItem[]]>(
+        ([acc, remaining], item) => {
+          const [newItem, newRemaining] = replaceEncryptables(item, remaining);
+          return [[...acc, newItem], newRemaining];
+        },
+        [[], encryptedItems],
+      );
+    } else {
+      // Object - recurse
+      return Object.entries(item).reduce<[Record<string, any>, CoFheInItem[]]>(
+        ([acc, remaining], [key, value]) => {
+          const [newValue, newRemaining] = replaceEncryptables(
+            value,
+            remaining,
+          );
+          return [{ ...acc, [key]: newValue }, newRemaining];
+        },
+        [{}, encryptedItems],
+      );
+    }
+  }
+
+  return [item, encryptedItems];
+}
+
 async function encrypt<T>(
   item: T,
-): Promise<Result<MappedCoFheEncryptedTypes<T>>>;
+  securityZone?: number,
+): Promise<Result<Encrypted_Inputs<T>>>;
 async function encrypt<T extends any[]>(
   item: [...T],
-): Promise<Result<[...MappedCoFheEncryptedTypes<T>]>>;
-async function encrypt<T>(item: T) {
+  securityZone?: number,
+): Promise<Result<[...Encrypted_Inputs<T>]>>;
+async function encrypt<T>(item: T, securityZone = 0) {
   const state = _sdkStore.getState();
 
   // Only need to check `fheKeysInitialized`, signer and provider not needed for encryption
@@ -338,143 +381,69 @@ async function encrypt<T>(item: T) {
     provider: false,
     signer: false,
   });
-  if (!initialized.success)
-    return ResultErr(`${encrypt.name} :: ${initialized.error}`);
+  if (!initialized.success) return ResultErr(`encrypt :: ${initialized.error}`);
 
-  // Permission
-  if (item === "permission") {
-    return getPermission();
-  }
+  if (state.account == null)
+    return ResultErr("encrypt :: account uninitialized");
 
-  // EncryptableItem
-  if (isEncryptableItem(item)) {
-    // Early exit with mock encrypted value if chain is hardhat
-    // TODO: Determine how CoFHE encrypted items will be handled in hardhat
-    if (chainIsHardhat(state.coFheUrl))
-      return ResultOk(hardhatMockEncrypt(BigInt(item.data)));
+  const fhePublicKey = _store_getConnectedChainFheKey(0);
+  if (fhePublicKey == null)
+    return ResultErr("encrypt :: fheKey for current chain not found");
 
-    const fhePublicKey = _store_getConnectedChainFheKey(item.securityZone ?? 0);
-    if (fhePublicKey == null)
-      return ResultErr("encrypt :: fheKey for current chain not found");
+  const crs = _store_getCrs(state.chainId);
+  if (crs == null)
+    return ResultErr("encrypt :: CRS for current chain not found");
 
-    let preEncryptedItem;
+  const coFheUrl = state.coFheUrl;
+  if (coFheUrl == null) return ResultErr("encrypt :: coFheUrl not initialized");
 
-    // prettier-ignore
-    try {
-      switch (item.utype) {
-        case FheUType.bool: {
-          preEncryptedItem = tfhe_encrypt_bool(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.uint8: {
-          preEncryptedItem = tfhe_encrypt_uint8(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.uint16: {
-          preEncryptedItem = tfhe_encrypt_uint16(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.uint32: {
-          preEncryptedItem = tfhe_encrypt_uint32(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.uint64: {
-          preEncryptedItem = tfhe_encrypt_uint64(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.uint128: {
-          preEncryptedItem = tfhe_encrypt_uint128(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.uint256: {
-          preEncryptedItem = tfhe_encrypt_uint256(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-        case FheUType.address: {
-          preEncryptedItem = tfhe_encrypt_address(item.data, fhePublicKey, item.securityZone);
-          break;
-        }
-      }
-    } catch (e) {
-      return ResultErr(`encrypt :: tfhe_encrypt_xxxx :: ${e}`)
-    }
+  const encryptableItems = extractEncryptables(item);
 
-    // Send preEncryptedItem to CoFHE route `/UpdateCT`, receive `ctHash` to use as contract input
-    const res = (await fetch(`${state.coFheUrl}/UpdateCT`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json", // Ensure the server knows you're sending JSON
-      },
-      body: JSON.stringify({
-        UType: item.utype,
-        Value: toHexString(preEncryptedItem.data),
-        SecurityZone: item.securityZone,
-      }),
-    })) as any;
+  const builder = zkPack(encryptableItems, fhePublicKey);
+  const proved = await zkProve(builder, crs, state.account, securityZone);
+  const zkVerifyRes = await zkVerify(
+    coFheUrl,
+    proved,
+    state.account,
+    securityZone,
+  );
 
-    const data = await res.json();
+  if (!zkVerifyRes.success)
+    return ResultErr(
+      `encrypt :: ZK proof verification failed - ${zkVerifyRes.error}`,
+    );
 
-    // Transform data into final CoFHE input variable
-    return ResultOk({
-      securityZone: item.securityZone,
-      hash: BigInt(`0x${data.ctHash}`),
-      utype: item.utype,
-      signature: data.signature,
-    } as CoFheEncryptedNumber);
-  }
+  const inItems: CoFheInItem[] = zkVerifyRes.data.map(
+    ({ ct_hash, signature }, index) => ({
+      hash: BigInt(ct_hash),
+      securityZone,
+      utype: encryptableItems[index].utype,
+      signature,
+    }),
+  );
 
-  // Object | Array
-  if (typeof item === "object" && item !== null) {
-    if (Array.isArray(item)) {
-      // Array - recurse
-      const nestedItems = await Promise.all(
-        item.map((nestedItem) => encrypt(nestedItem)),
-      );
+  const [preparedInputItems, remainingInItems] = replaceEncryptables(
+    item,
+    inItems,
+  );
 
-      // Any nested error break out
-      const nestedItemResultErr = nestedItems.find(
-        (nestedItem) => !nestedItem.success,
-      );
-      if (nestedItemResultErr != null) return nestedItemResultErr;
+  if (remainingInItems.length !== 0)
+    return ResultErr(
+      "encrypt :: some encrypted inputs remaining after replacement",
+    );
 
-      return ResultOk(nestedItems.map((nestedItem) => nestedItem.data));
-    } else {
-      // Object - recurse
-      const nestedKeyedItems = await Promise.all(
-        Object.entries(item).map(async ([key, value]) => ({
-          key,
-          value: await encrypt(value),
-        })),
-      );
-
-      // Any nested error break out
-      const nestedItemResultErr = nestedKeyedItems.find(
-        ({ value }) => !value.success,
-      );
-      if (nestedItemResultErr != null) return nestedItemResultErr;
-
-      const result: Record<string, any> = {};
-      nestedKeyedItems.forEach(({ key, value }) => {
-        result[key] = value.data;
-      });
-
-      return ResultOk(result);
-    }
-  }
-
-  // Primitive
-  return ResultOk(item);
+  return ResultOk(preparedInputItems);
 }
 
 // Unseal
 
 /**
  * Unseals an encrypted message using the stored permit for a specific contract address.
- * NOTE: Wrapper around `PermitV2.unseal`
+ * NOTE: Wrapper around `Permit.unseal`
  *
  * @param {string} ciphertext - The encrypted message to unseal.
  * @param {string} account - Users address, defaults to store.account
- * @param {string} hash - The hash of the permit to use for this operation, defaults to active permitV2 hash
+ * @param {string} hash - The hash of the permit to use for this operation, defaults to active permit hash
  * @returns bigint - The unsealed message.
  */
 const unsealCiphertext = (
@@ -493,14 +462,14 @@ const unsealCiphertext = (
   const resolvedHash = hash ?? permitStore.getActivePermitHash(resolvedAccount);
   if (resolvedAccount == null || resolvedHash == null) {
     return ResultErr(
-      `unsealCiphertext :: PermitV2 hash not provided and active PermitV2 not found`,
+      `unsealCiphertext :: Permit hash not provided and active Permit not found`,
     );
   }
 
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
     return ResultErr(
-      `unsealCiphertext :: PermitV2 with account <${account}> and hash <${hash}> not found`,
+      `unsealCiphertext :: Permit with account <${account}> and hash <${hash}> not found`,
     );
   }
 
@@ -531,14 +500,14 @@ function unseal<T>(
   const resolvedHash = hash ?? permitStore.getActivePermitHash(resolvedAccount);
   if (resolvedAccount == null || resolvedHash == null) {
     return ResultErr(
-      `unseal :: PermitV2 hash not provided and active PermitV2 not found`,
+      `unseal :: Permit hash not provided and active Permit not found`,
     );
   }
 
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
     return ResultErr(
-      `unseal :: PermitV2 with account <${account}> and hash <${hash}> not found`,
+      `unseal :: Permit with account <${account}> and hash <${hash}> not found`,
     );
   }
 
@@ -554,7 +523,7 @@ function unseal<T>(
 
 // Export
 
-export const fhenixsdk = {
+export const cofhejs = {
   store: _sdkStore,
   initialize,
 
@@ -565,7 +534,7 @@ export const fhenixsdk = {
   getPermission,
   getAllPermits,
 
-  encrypt,
+  encrypt: encrypt,
 
   unsealCiphertext,
   unseal,

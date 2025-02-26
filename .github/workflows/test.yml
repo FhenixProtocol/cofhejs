@@ -9,7 +9,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
 
     services:
       fhenix:

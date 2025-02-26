@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
-import { TfheCompactPublicKey } from "./fhe/fhe";
 import { fromHexString } from "./utils";
 import { chainIsHardhat } from "./utils.hardhat";
 import { PUBLIC_KEY_LENGTH_MIN } from "./consts";
@@ -9,8 +8,9 @@ import {
   AbstractProvider,
   AbstractSigner,
   InitializationParams,
-  PermitV2AccessRequirements,
 } from "../types";
+import { type TfheCompactPublicKey, type CompactPkeCrs } from "tfhe";
+import { getTfhe } from "./tfhe-wrapper";
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -48,7 +48,7 @@ export type SdkStore = SdkStoreProviderInitialization &
 
     securityZones: number[];
     fheKeys: ChainRecord<SecurityZoneRecord<Uint8Array | undefined>>;
-    accessRequirements: PermitV2AccessRequirements;
+    crs: ChainRecord<Uint8Array | undefined>;
 
     coFheUrl: string | undefined;
   };
@@ -60,10 +60,7 @@ export const _sdkStore = createStore<SdkStore>(
 
       securityZones: [0],
       fheKeys: {},
-      accessRequirements: {
-        contracts: [],
-        projects: [],
-      },
+      crs: {},
 
       coFheUrl: undefined,
 
@@ -88,7 +85,8 @@ const _store_getFheKey = (
   const serialized = _sdkStore.getState().fheKeys[chainId]?.[securityZone];
   if (serialized == null) return undefined;
 
-  return TfheCompactPublicKey.deserialize(serialized);
+  const tfhe = getTfhe();
+  return tfhe.TfheCompactPublicKey.deserialize(serialized);
 };
 
 export const _store_getConnectedChainFheKey = (
@@ -102,7 +100,8 @@ export const _store_getConnectedChainFheKey = (
   const serialized = state.fheKeys[state.chainId]?.[securityZone];
   if (serialized == null) return undefined;
 
-  return TfheCompactPublicKey.deserialize(serialized);
+  const tfhe = getTfhe();
+  return tfhe.TfheCompactPublicKey.deserialize(serialized);
 };
 
 export const _store_setFheKey = (
@@ -120,17 +119,35 @@ export const _store_setFheKey = (
   );
 };
 
+export const _store_setCrs = (
+  chainId: string | undefined,
+  crs: CompactPkeCrs | undefined,
+) => {
+  if (chainId == null) return;
+
+  _sdkStore.setState(
+    produce<SdkStore>((state) => {
+      state.crs[chainId] = crs?.serialize(false);
+    }),
+  );
+};
+
+export const _store_getCrs = (
+  chainId: string | undefined,
+): CompactPkeCrs | undefined => {
+  if (chainId == null) return undefined;
+
+  const serialized = _sdkStore.getState().crs[chainId];
+  if (serialized == null) return undefined;
+
+  const tfhe = getTfhe();
+  return tfhe.CompactPkeCrs.deserialize(serialized);
+};
+
 const getChainIdFromProvider = async (
   provider: AbstractProvider,
 ): Promise<string> => {
-  var chainId: string | null = null;
-  try {
-    chainId = await provider.getChainId();
-  } catch (err) {
-    const network = await provider.getNetwork();
-    chainId = network.chainId;
-  }
-  
+  const chainId = await provider.getChainId();
   if (chainId == null)
     throw new Error(
       "sdk :: getChainIdFromProvider :: provider.getChainId returned a null result, ensure that your provider is connected to a network",
@@ -145,18 +162,12 @@ export const _store_initialize = async (params: InitializationParams) => {
     provider,
     signer,
     securityZones = [0],
-    contracts: contractRequirements = [],
-    projects: projectRequirements = [],
     coFheUrl = undefined,
   } = params;
 
   _sdkStore.setState({
     providerInitialized: false,
     signerInitialized: false,
-    accessRequirements: {
-      contracts: contractRequirements,
-      projects: projectRequirements,
-    },
     coFheUrl,
   });
 
@@ -226,54 +237,63 @@ export const _store_fetchFheKey = async (
   const coFheUrl = _sdkStore.getState().coFheUrl;
   if (coFheUrl == null || typeof coFheUrl !== "string") {
     throw new Error(
-      "Error initializing fhenixjs; coFheUrl invalid, ensure it is set in `fhenixsdk.initialize`",
+      "Error initializing fhenixjs; coFheUrl invalid, ensure it is set in `cofhejs.initialize`",
     );
   }
 
-  let publicKey: string | undefined = undefined;
+  let pk_data: string | undefined = undefined;
+  let crs_data: string | undefined = undefined;
 
   // Fetch publicKey from CoFhe
   try {
-    // TODO: misspelling?
-    const res = await fetch(`${coFheUrl}/GetNetworkPublickKey`, {
+    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublickKey`, {
       method: "POST",
-      body: JSON.stringify({
-        SecurityZone: securityZone,
-      }),
     });
+    pk_data = (await pk_res.json()).public_key;
 
-    const data = await res.json();
-
-    publicKey = `0x${data.securityZone}`;
+    const crs_res = await fetch(`${coFheUrl}/crs`, {
+      method: "POST",
+    });
+    crs_data = (await crs_res.json()).crs;
   } catch (err) {
     throw new Error(
-      `Error initializing fhenixjs; fetching FHE publicKey from CoFHE failed with error ${err}`,
+      `Error initializing fhenixjs; fetching FHE publicKey and CRS from CoFHE failed with error ${err}`,
     );
   }
 
-  if (publicKey == null || typeof publicKey !== "string") {
+  if (pk_data == null || typeof pk_data !== "string") {
     throw new Error(
-      `Error initializing fhenixjs; FHE publicKey fetched from CoFHE invalid: not a string`,
+      `Error initializing fhenixjs; FHE publicKey fetched from CoFHE invalid: missing or not a string`,
     );
   }
 
-  if (publicKey === "0x") {
+  if (pk_data === "0x") {
     throw new Error(
       "Error initializing fhenixjs; provided chain is not FHE enabled, no FHE publicKey found",
     );
   }
 
-  if (publicKey.length < PUBLIC_KEY_LENGTH_MIN) {
+  if (pk_data.length < PUBLIC_KEY_LENGTH_MIN) {
     throw new Error(
-      `Error initializing fhenixjs; got shorter than expected FHE publicKey: ${publicKey.length}. Expected length >= ${PUBLIC_KEY_LENGTH_MIN}`,
+      `Error initializing fhenixjs; got shorter than expected FHE publicKey: ${pk_data.length}. Expected length >= ${PUBLIC_KEY_LENGTH_MIN}`,
     );
   }
 
-  const buff = fromHexString(publicKey);
+  if (crs_data == null || typeof crs_data !== "string") {
+    throw new Error(
+      `Error initializing fhenixjs; CRS fetched from CoFHE invalid: missing or not a string`,
+    );
+  }
+
+  const pk_buff = fromHexString(pk_data);
+  const crs_buff = fromHexString(crs_data);
 
   try {
-    const key = TfheCompactPublicKey.deserialize(buff);
+    const tfhe = getTfhe();
+    const key = tfhe.TfheCompactPublicKey.deserialize(pk_buff);
     _store_setFheKey(chainId, securityZone, key);
+    const crs = tfhe.CompactPkeCrs.deserialize(crs_buff);
+    _store_setCrs(chainId, crs);
     return key;
   } catch (err) {
     throw new Error(`Error deserializing public key ${err}`);

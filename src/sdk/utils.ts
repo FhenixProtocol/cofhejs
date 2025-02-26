@@ -1,4 +1,4 @@
-import { isNumber } from "./validation.js";
+import { isNumber } from "./validation";
 
 export const toBigIntOrThrow = (value: bigint | string): bigint => {
   if (typeof value === "bigint") {
@@ -40,6 +40,12 @@ export const validateUintInRange = (
       `Value out of range: ${max} - ${min}, try a different uint type`,
     );
   }
+};
+
+export const recordToUint8Array = (record: Record<string, any>): Uint8Array => {
+  const jsonString = JSON.stringify(record);
+  const encoder = new TextEncoder();
+  return encoder.encode(jsonString);
 };
 
 export const fromHexString = (hexString: string): Uint8Array => {

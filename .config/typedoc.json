@@ -2,7 +2,7 @@
   "entryPoints": ["../src/index.ts"],
   "out": "./../docs",
   "githubPages": true,
-  "name": "fhenix.js Docs",
+  "name": "cofhe.js Docs",
   "excludePrivate": true,
   "excludeProtected": true,
   "media": "./../media",

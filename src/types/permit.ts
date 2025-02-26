@@ -1,15 +1,15 @@
 import { SealingKey } from "../sdk/sealing";
 
 /**
- * Type representing the full PermitV2
+ * Type representing the full Permit
  */
-export type PermitV2Interface = {
+export type PermitInterface = {
   /**
    * Name for this permit, for organization and UI usage, not included in signature.
    */
   name: string;
   /**
-   * The type of the PermitV2 (self / sharing)
+   * The type of the Permit (self / sharing)
    * (self) Permit that will be signed and used by the issuer
    * (sharing) Permit that is signed by the issuer, but intended to be shared with recipient
    * (recipient) Permit that has been received, and signed by the recipient
@@ -23,14 +23,6 @@ export type PermitV2Interface = {
    * (base) Expiration timestamp
    */
   expiration: number;
-  /**
-   * (base) List of contract addresses that can be accessed with this permission
-   */
-  contracts: string[];
-  /**
-   * (base) List of project identifiers (strings) that can be accessed
-   */
-  projects: string[];
   /**
    * (sharing) The user that this permission will be shared with
    * ** optional, use `address(0)` to disable **
@@ -55,8 +47,8 @@ export type PermitV2Interface = {
   /**
    * (base) `signTypedData` signature created by `issuer`.
    * (base) Shared- and Self- permissions differ in signature format: (`sealingKey` absent in shared signature)
-   *   (non-sharing) < issuer, expiration, contracts, projects, recipient, validatorId, validatorContract, sealingKey >
-   *   (sharing)     < issuer, expiration, contracts, projects, recipient, validatorId, validatorContract >
+   *   (non-sharing) < issuer, expiration, recipient, validatorId, validatorContract, sealingKey >
+   *   (sharing)     < issuer, expiration, recipient, validatorId, validatorContract >
    */
   issuerSignature: string;
   /**
@@ -68,11 +60,11 @@ export type PermitV2Interface = {
 };
 
 /**
- * Optional additional metadata of a PermitV2
+ * Optional additional metadata of a Permit
  * Can be passed into the constructor, but not necessary
  * Useful for deserialization
  */
-export type PermitV2Metadata = {
+export type PermitMetadata = {
   /**
    * Chain that this permit was signed on. In part used for mock encrypt/unseal on hardhat network.
    * Should not be set manually, included in metadata as part of serialization flows.
@@ -84,38 +76,24 @@ export type PickPartial<T, F extends keyof T> = Expand<
   Omit<T, F> & Partial<Pick<T, F>>
 >;
 
-export type PermitV2Satisfiers = Expand<
-  Pick<PermitV2Interface, "contracts" | "projects">
->;
-
-export type PermitV2Core = Expand<
-  Pick<PermitV2Interface, "issuer"> &
+export type PermitCore = Expand<
+  Pick<PermitInterface, "issuer"> &
     Partial<
-      Pick<
-        PermitV2Interface,
-        | "contracts"
-        | "projects"
-        | "recipient"
-        | "validatorId"
-        | "validatorContract"
-      >
+      Pick<PermitInterface, "recipient" | "validatorId" | "validatorContract">
     >
 >;
-// export type PermitV2Options = Expand<
-//   Partial<PermitV2Interface> & Pick<PermitV2Interface, "type" | "issuer">
-// >;
 
-export type PermitV2Options =
+export type PermitOptions =
   // Self permit requires at minimum `issuer`, excludes `recipient` and `recipientSignature`
   | Expand<
-      Partial<Omit<PermitV2Interface, "recipient" | "recipientSignature">> & {
+      Partial<Omit<PermitInterface, "recipient" | "recipientSignature">> & {
         type: "self";
         issuer: string;
       }
     >
   // Sharing permit requires at minimum `issuer` and `recipient`, excludes `recipientSignature`
   | Expand<
-      Partial<Omit<PermitV2Interface, "recipientSignature">> & {
+      Partial<Omit<PermitInterface, "recipientSignature">> & {
         type: "sharing";
         issuer: string;
         recipient: string;
@@ -123,7 +101,7 @@ export type PermitV2Options =
     >
   // Recipient permit requires the full issuer's permit
   | Expand<
-      Partial<PermitV2Interface> & {
+      Partial<PermitInterface> & {
         type: "recipient";
         issuer: string;
         recipient: string;
@@ -131,8 +109,8 @@ export type PermitV2Options =
       }
     >;
 
-export type SerializedPermitV2 = Omit<PermitV2Interface, "sealingPair"> &
-  PermitV2Metadata & {
+export type SerializedPermit = Omit<PermitInterface, "sealingPair"> &
+  PermitMetadata & {
     sealingPair: {
       privateKey: string;
       publicKey: string;
@@ -140,10 +118,10 @@ export type SerializedPermitV2 = Omit<PermitV2Interface, "sealingPair"> &
   };
 
 /**
- * A type representing the PermissionV2 struct that is passed to PermissionedV2.sol to grant encrypted data access.
+ * A type representing the Permission struct that is passed to Permissioned.sol to grant encrypted data access.
  */
-export type PermissionV2 = Expand<
-  Omit<PermitV2Interface, "name" | "type" | "sealingPair"> & {
+export type Permission = Expand<
+  Omit<PermitInterface, "name" | "type" | "sealingPair"> & {
     sealingKey: string;
   }
 >;

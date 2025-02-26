@@ -1,14 +1,14 @@
 import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
 import { produce } from "immer";
-import { SerializedPermitV2 } from "../../types";
-import { PermitV2 } from "./permit";
+import { SerializedPermit } from "../../types";
+import { Permit } from "./permit";
 
 type AccountRecord<T> = Record<string, T>;
 type HashRecord<T> = Record<string, T>;
 
 type PermitsStore = {
-  permits: AccountRecord<HashRecord<SerializedPermitV2 | undefined>>;
+  permits: AccountRecord<HashRecord<SerializedPermit | undefined>>;
   activePermitHash: AccountRecord<string | undefined>;
 };
 
@@ -24,23 +24,23 @@ export const _permitStore = createStore<PermitsStore>()(
   ),
 );
 
-// Permit V2
+// Permit
 
 export const getPermit = (
   account: string | undefined,
   hash: string | undefined,
-): PermitV2 | undefined => {
+): Permit | undefined => {
   if (account == null || hash == null) return;
 
   const savedPermit = _permitStore.getState().permits[account]?.[hash];
   if (savedPermit == null) return;
 
-  return PermitV2.deserialize(savedPermit);
+  return Permit.deserialize(savedPermit);
 };
 
 export const getActivePermit = (
   account: string | undefined,
-): PermitV2 | undefined => {
+): Permit | undefined => {
   if (account == null) return;
 
   const activePermitHash = _permitStore.getState().activePermitHash[account];
@@ -49,23 +49,23 @@ export const getActivePermit = (
 
 export const getPermits = (
   account: string | undefined,
-): Record<string, PermitV2> => {
+): Record<string, Permit> => {
   if (account == null) return {};
 
   return Object.entries(_permitStore.getState().permits[account] ?? {}).reduce(
     (acc, [hash, permit]) => {
       if (permit == undefined) return acc;
-      return { ...acc, [hash]: PermitV2.deserialize(permit) };
+      return { ...acc, [hash]: Permit.deserialize(permit) };
     },
-    {} as Record<string, PermitV2>,
+    {} as Record<string, Permit>,
   );
 };
 
-export const setPermit = (account: string, permitV2: PermitV2) => {
+export const setPermit = (account: string, permit: Permit) => {
   _permitStore.setState(
     produce<PermitsStore>((state) => {
       if (state.permits[account] == null) state.permits[account] = {};
-      state.permits[account][permitV2.getHash()] = permitV2.serialize();
+      state.permits[account][permit.getHash()] = permit.serialize();
     }),
   );
 };

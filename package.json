@@ -7,8 +7,9 @@
   "types": "./lib/types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./lib/esm/index.js",
-      "default": "./lib/commonjs/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
     }
   },
   "engines": {
@@ -25,20 +26,20 @@
     "LICENSE"
   ],
   "scripts": {
-    "build-rollup": "rollup -c",
-    "dev-rollup": "rollup -c -w",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build",
     "lint": "eslint src/",
     "_pure-compile": "tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && tsc -p tsconfig.types.json",
     "compile": "pnpm _hack-backup-cjs && pnpm _pure-compile && pnpm _hack-restore-cjs",
-    "build": "pnpm _hack-backup-cjs && pnpm _pure-compile && pnpm build-rollup && uglifyjs ./dist/cofhe.esm.js -o ./dist/cofhe.esm.min.js && uglifyjs ./dist/cofhe.umd.js -o ./dist/cofhe.umd.min.js && pnpm _hack-restore-cjs",
-    "test": "pnpm compile && VITE_CJS_IGNORE_WARNING=true vitest ",
+    "build-rollup": "rollup -c",
+    "dev-rollup": "rollup -c -w",
+    "test": "VITE_CJS_IGNORE_WARNING=true vitest --reporter=basic --disable-console-intercept=false --silent=false",
     "coverage": "pnpm compile && VITE_CJS_IGNORE_WARNING=true vitest run --coverage",
-    "_hack-backup-cjs": "shx cp ./lib/commonjs/sdk/fhe/tfhe.js . && shx cp ./lib/commonjs/sdk/fhe/tfhe-browser.js .",
-    "_hack-restore-cjs": "shx mv tfhe.js ./lib/commonjs/sdk/fhe/ && shx mv tfhe-browser.js ./lib/commonjs/sdk/fhe/",
     "test-no-localfhenix": "SKIP_LOCAL_ENV=true VITE_CJS_IGNORE_WARNING=true vitest ",
     "prettier": "prettier --write \"**/*.{js,json,md,sol,ts,yml}\"",
     "prettier-ci": "prettier --check \"**/*.{js,json,md,sol,ts,yml}\""
-    
   },
   "repository": {
     "type": "git",
@@ -53,6 +54,8 @@
   "dependencies": {
     "@types/node": "^20.0.0",
     "immer": "^10.1.1",
+    "node-tfhe": "^1.0.0",
+    "tfhe": "0.11.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "type-fest": "^4.26.1",
@@ -73,6 +76,7 @@
     "rollup": "4.18.0",
     "shx": "^0.3.4",
     "ts-node": "10.9.2",
+    "tsup": "^8.4.0",
     "typedoc": "0.25.13",
     "typedoc-plugin-extras": "3.0.0",
     "typescript": "5.4.5",

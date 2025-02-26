@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  host_chain:
+    image: ghcr.io/fhenixprotocol/nitro/localfhenix:v0.3.2-alpha.17
+    ports:
+      - "42069:8547"
+      - "42070:8548"
+      - "42000:3000"
+
+  registry_chain:
+    image: ghcr.io/fhenixprotocol/nitro/localfhenix:v0.3.2-alpha.17
+    ports:
+      - "42169:8547"
+      - "42170:8548"
+      - "42100:3000"
+
+  fheos_server:
+    image: ghcr.io/fhenixprotocol/cofhe/fheos:v0.0.6
+    network_mode: "host"
+    depends_on:
+      - registry_chain
+      - host_chain
+
+  middleware:
+    image: ghcr.io/fhenixprotocol/cofhe/middleware:v0.0.5
+    network_mode: "host"
+    depends_on:
+      - host_chain
+      - registry_chain
+      - fheos_server

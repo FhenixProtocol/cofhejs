@@ -10,3 +10,9 @@
 !bin/**
 .config
 docs
+src/
+test/
+tsup.config.ts
+.gitignore
+.eslintrc
+.prettierrc

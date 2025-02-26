@@ -1,9 +1,10 @@
 import { LiteralToPrimitive, Primitive } from "type-fest";
-import { FheAllUTypes, FheUintUTypes, FheUType } from "./base";
+import { FheAllUTypes, FheUintUTypes } from "./base";
+import { FheTypes } from "tfhe";
 
 export type SealedBool = {
   data: string;
-  utype: FheUType.bool;
+  utype: FheTypes.Bool;
 };
 export type SealedUint = {
   data: string;
@@ -11,7 +12,7 @@ export type SealedUint = {
 };
 export type SealedAddress = {
   data: string;
-  utype: FheUType.address;
+  utype: FheTypes.Uint160;
 };
 export type SealedItem = SealedBool | SealedUint | SealedAddress;
 
@@ -57,7 +58,7 @@ export function getAsSealedItem(value: any): SealedItem | undefined {
 }
 
 export function isSealedBool(value: SealedItem): boolean {
-  return parseInt(`${value.utype}`) === FheUType.bool;
+  return parseInt(`${value.utype}`) === FheTypes.Bool;
 }
 
 export function isSealedUint(value: SealedItem): boolean {
@@ -65,5 +66,5 @@ export function isSealedUint(value: SealedItem): boolean {
 }
 
 export function isSealedAddress(value: SealedItem): boolean {
-  return parseInt(`${value.utype}`) === FheUType.address;
+  return parseInt(`${value.utype}`) === FheTypes.Uint160;
 }

@@ -1,8 +1,0 @@
-{
-  "browser": {
-    "./sdk/fhe/fhe.js": "./sdk/fhe/fhe-browser.js",
-    "./sdk/fhe/tfhe.js": "./sdk/fhe/tfhe-browser.js",
-    "./sdk/fhe/tfhe_bg.wasm": "./sdk/fhe/tfhe_bg-browser.wasm"
-  },
-  "sideEffects": false
-}

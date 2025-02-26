@@ -1,57 +1,51 @@
-import { PermissionV2 } from "../../types";
+import { Permission } from "../../types";
 import { EIP712Message, EIP712Types } from "../../types/EIP712";
 import { ZeroAddress } from "ethers";
 
-const PermitV2SignatureAllFields = [
+const PermitSignatureAllFields = [
   { name: "issuer", type: "address" },
   { name: "expiration", type: "uint64" },
-  { name: "contracts", type: "address[]" },
-  { name: "projects", type: "string[]" },
   { name: "recipient", type: "address" },
   { name: "validatorId", type: "uint256" },
   { name: "validatorContract", type: "address" },
   { name: "sealingKey", type: "bytes32" },
   { name: "issuerSignature", type: "bytes" },
 ] as const;
-type PermitV2SignatureFieldOption =
-  (typeof PermitV2SignatureAllFields)[number]["name"];
+type PermitSignatureFieldOption =
+  (typeof PermitSignatureAllFields)[number]["name"];
 
 export const SignatureTypes = {
-  PermissionedV2IssuerSelf: [
+  PermissionedIssuerSelf: [
     "issuer",
     "expiration",
-    "contracts",
-    "projects",
     "recipient",
     "validatorId",
     "validatorContract",
     "sealingKey",
-  ] satisfies PermitV2SignatureFieldOption[],
-  PermissionedV2IssuerShared: [
+  ] satisfies PermitSignatureFieldOption[],
+  PermissionedIssuerShared: [
     "issuer",
     "expiration",
-    "contracts",
-    "projects",
     "recipient",
     "validatorId",
     "validatorContract",
-  ] satisfies PermitV2SignatureFieldOption[],
-  PermissionedV2Recipient: [
+  ] satisfies PermitSignatureFieldOption[],
+  PermissionedRecipient: [
     "sealingKey",
     "issuerSignature",
-  ] satisfies PermitV2SignatureFieldOption[],
+  ] satisfies PermitSignatureFieldOption[],
 } as const;
-export type PermitV2SignaturePrimaryType = keyof typeof SignatureTypes;
+export type PermitSignaturePrimaryType = keyof typeof SignatureTypes;
 
 export const getSignatureTypesAndMessage = <
-  T extends PermitV2SignatureFieldOption,
+  T extends PermitSignatureFieldOption,
 >(
-  primaryType: PermitV2SignaturePrimaryType,
+  primaryType: PermitSignaturePrimaryType,
   fields: T[] | readonly T[],
-  values: Pick<PermissionV2, T> & Partial<PermissionV2>,
+  values: Pick<Permission, T> & Partial<Permission>,
 ): { types: EIP712Types; primaryType: string; message: EIP712Message } => {
   const types = {
-    [primaryType]: PermitV2SignatureAllFields.filter((fieldType) =>
+    [primaryType]: PermitSignatureAllFields.filter((fieldType) =>
       fields.includes(fieldType.name as T),
     ),
   };
@@ -68,8 +62,8 @@ export const getSignatureTypesAndMessage = <
 };
 
 export const getSignatureDomain = (chainId: string) => ({
-  name: "Fhenix Permission v2.0.0",
-  version: "v2.0.0",
+  name: "Fhenix Permission 1.0.0",
+  version: "1.0.0",
   chainId: parseInt(chainId),
   verifyingContract: ZeroAddress,
 });
