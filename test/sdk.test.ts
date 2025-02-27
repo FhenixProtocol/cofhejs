@@ -220,8 +220,6 @@ describe("Sdk Tests", () => {
       CoFheInUint8,
     ];
 
-    console.log(JSON.stringify(nestedEncrypt.data, null, 2));
-
     expectTypeOf<Readonly<ExpectedEncryptedType>>().toEqualTypeOf(
       nestedEncrypt.data!,
     );
