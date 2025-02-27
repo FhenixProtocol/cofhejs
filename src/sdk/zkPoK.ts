@@ -136,7 +136,9 @@ export const zkVerify = async (
   const list_bytes = compactList.serialize();
 
   // Convert bytearray to base64 string
-  const base64List = btoa(String.fromCharCode.apply(null, list_bytes));
+  const base64List = btoa(
+    String.fromCharCode.apply(null, Array.from(list_bytes)),
+  );
 
   const sz_byte = new Uint8Array([securityZone]);
 
@@ -184,7 +186,8 @@ export const zkVerify = async (
       return ResultErr(json.error);
     }
   } catch (e) {
-    console.error(e);
-    return ResultErr(e);
+    const message = e instanceof Error ? e.message : `Error: ${e}`;
+    console.error(message);
+    return ResultErr(message);
   }
 };
