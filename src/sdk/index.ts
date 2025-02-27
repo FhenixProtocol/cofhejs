@@ -42,7 +42,7 @@ const initialize = async (
       return undefined;
     } else {
       return ResultErr(
-        `initialize :: failed to initialize fhenixjs - is the network FHE-enabled? ${err}`,
+        `initialize :: failed to initialize cofhejs - is the network FHE-enabled? ${err}`,
       );
     }
   });

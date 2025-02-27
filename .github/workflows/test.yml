@@ -11,17 +11,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # services:
-    #   fhenix:
-    #     image: ghcr.io/fhenixprotocol/nitro/localfhenix:latest
-    #     ports:
-    #       - 8545:8547 # RPC
-    #       - 5000:3000 # Faucet
-    #     env:
-    #       FHEOS_SECURITY_ZONES: 2
-    #     credentials:
-    #       username: ${{ github.actor }}
-    #       password: ${{ secrets.GH_PAT }}
+    services:
+      fhenix:
+        image: ghcr.io/fhenixprotocol/zk-verifier:alpha-no-fheos
+        ports:
+          - 3000:3000
 
     env:
       SKIP_LOCAL_ENV: "true"

@@ -237,7 +237,7 @@ export const _store_fetchFheKey = async (
   const coFheUrl = _sdkStore.getState().coFheUrl;
   if (coFheUrl == null || typeof coFheUrl !== "string") {
     throw new Error(
-      "Error initializing fhenixjs; coFheUrl invalid, ensure it is set in `cofhejs.initialize`",
+      "Error initializing cofhejs; coFheUrl invalid, ensure it is set in `cofhejs.initialize`",
     );
   }
 
@@ -257,31 +257,31 @@ export const _store_fetchFheKey = async (
     crs_data = (await crs_res.json()).crs;
   } catch (err) {
     throw new Error(
-      `Error initializing fhenixjs; fetching FHE publicKey and CRS from CoFHE failed with error ${err}`,
+      `Error initializing cofhejs; fetching FHE publicKey and CRS from CoFHE failed with error ${err}`,
     );
   }
 
   if (pk_data == null || typeof pk_data !== "string") {
     throw new Error(
-      `Error initializing fhenixjs; FHE publicKey fetched from CoFHE invalid: missing or not a string`,
+      `Error initializing cofhejs; FHE publicKey fetched from CoFHE invalid: missing or not a string`,
     );
   }
 
   if (pk_data === "0x") {
     throw new Error(
-      "Error initializing fhenixjs; provided chain is not FHE enabled, no FHE publicKey found",
+      "Error initializing cofhejs; provided chain is not FHE enabled, no FHE publicKey found",
     );
   }
 
   if (pk_data.length < PUBLIC_KEY_LENGTH_MIN) {
     throw new Error(
-      `Error initializing fhenixjs; got shorter than expected FHE publicKey: ${pk_data.length}. Expected length >= ${PUBLIC_KEY_LENGTH_MIN}`,
+      `Error initializing cofhejs; got shorter than expected FHE publicKey: ${pk_data.length}. Expected length >= ${PUBLIC_KEY_LENGTH_MIN}`,
     );
   }
 
   if (crs_data == null || typeof crs_data !== "string") {
     throw new Error(
-      `Error initializing fhenixjs; CRS fetched from CoFHE invalid: missing or not a string`,
+      `Error initializing cofhejs; CRS fetched from CoFHE invalid: missing or not a string`,
     );
   }
 
