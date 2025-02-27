@@ -42,6 +42,7 @@ export const validateUintInRange = (
   }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const recordToUint8Array = (record: Record<string, any>): Uint8Array => {
   const jsonString = JSON.stringify(record);
   const encoder = new TextEncoder();
