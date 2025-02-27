@@ -22,7 +22,7 @@ jobs:
           version: 8
       - run: pnpm install
       # Generate your TypeDoc documentation
-      - run: pnpm typedoc --tsconfig tsconfig.esm.json
+      - run: pnpm typedoc --tsconfig tsconfig.json
       # https://github.com/actions/upload-pages-artifact
       - uses: actions/upload-pages-artifact@v3
         with:
