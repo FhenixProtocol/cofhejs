@@ -1,6 +1,6 @@
 {
   "name": "cofhejs",
-  "version": "0.0.1-alpha.4",
+  "version": "0.0.1-alpha.5",
   "description": "The JavaScript SDK for Fhenix's CoFHE Service",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
