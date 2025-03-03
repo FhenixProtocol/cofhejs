@@ -1,24 +1,24 @@
-let tfheModule: typeof import("tfhe") | typeof import("node-tfhe");
+type TfheBrowser = typeof import("tfhe");
+let tfheModule: TfheBrowser | typeof import("node-tfhe");
 
 export async function initTfhe(target: "web" | "node") {
   if (!tfheModule) {
-    tfheModule = await (target === "node"
-      ? import("node-tfhe")
-      : import("tfhe"));
+    const module = target === "node" ? "node-tfhe" : "tfhe";
+    tfheModule = await import(module);
   }
 
   // Browser requires init
   if (target === "web") {
-    await (tfheModule as typeof import("tfhe")).default();
+    await (tfheModule as TfheBrowser).default();
   }
 
   // Both targets require panic hook init
   tfheModule.init_panic_hook();
 
-  return tfheModule;
+  return tfheModule as TfheBrowser;
 }
 
 export function getTfhe() {
   if (tfheModule == null) throw new Error("Tfhe not initialized");
-  return tfheModule;
+  return tfheModule as TfheBrowser;
 }

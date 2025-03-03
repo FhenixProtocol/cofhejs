@@ -19,7 +19,8 @@
     "esModuleInterop": true,
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "module": "CommonJS"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]
