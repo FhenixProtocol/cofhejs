@@ -3,14 +3,13 @@
   "version": "0.0.1-alpha.5",
   "description": "The JavaScript SDK for Fhenix's CoFHE Service",
   "main": "./dist/index.js",
-  "module": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
-  "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "engines": {
@@ -18,7 +17,6 @@
   },
   "files": [
     "dist",
-    "lib",
     "src",
     "licenses",
     "package.json",
@@ -44,14 +42,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FhenixProtocol/cofhe.js.git"
+    "url": "git+https://github.com/FhenixProtocol/cofhejs.git"
   },
   "author": "FhenixProtocol",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/FhenixProtocol/cofhe.js/issues"
+    "url": "https://github.com/FhenixProtocol/cofhejs/issues"
   },
-  "homepage": "https://github.com/FhenixProtocol/cofhe.js#readme",
+  "homepage": "https://github.com/FhenixProtocol/cofhejs#readme",
   "dependencies": {
     "@types/node": "^20.0.0",
     "immer": "^10.1.1",

@@ -30,7 +30,6 @@ jobs:
 
       # Temporarily disable building before publish
       - run: pnpm install
-      - run: pnpm build
       - run: pnpm publish --no-git-checks ${{ env.PRERELEASE }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
