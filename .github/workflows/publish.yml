@@ -7,17 +7,14 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          registry-url: 'https://registry.npmjs.org/'
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-      - name: Set publishing config
-        run: pnpm config set '//registry.npmjs.org/:_authToken' "${NODE_AUTH_TOKEN}"
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       - name: Read package version
         id: package_version
         run: echo "VERSION=$(jq -r .version < package.json)" >> $GITHUB_ENV
@@ -32,6 +29,9 @@ jobs:
           fi
 
       # Temporarily disable building before publish
-      # - run: pnpm install
-      # - run: pnpm build:prod
+      - run: pnpm install
+      - run: pnpm build
       - run: pnpm publish --no-git-checks ${{ env.PRERELEASE }}
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+
