@@ -7,14 +7,6 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: [
-    "tfhe",
-    "node-tfhe",
-    "ethers",
-    "zustand",
-    "tweetnacl",
-    "tweetnacl-util",
-  ],
   esbuildOptions(options) {
     options.assetNames = "assets/[name]";
     options.loader = {

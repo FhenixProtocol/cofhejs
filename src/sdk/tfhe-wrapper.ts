@@ -4,17 +4,21 @@ let tfheModule: TfheBrowser | typeof import("node-tfhe");
 export async function initTfhe(target: "web" | "node") {
   if (!tfheModule) {
     const module = target === "node" ? "node-tfhe" : "tfhe";
-    tfheModule = await import(module);
+
+    if (typeof require !== "undefined") {
+      // Use require in CJS (Node)
+      tfheModule = require(module);
+    } else {
+      // Use dynamic import in ESM
+      tfheModule = await import(module).then((m) => m);
+    }
   }
 
-  // Browser requires init
   if (target === "web") {
     await (tfheModule as TfheBrowser).default();
   }
 
-  // Both targets require panic hook init
   tfheModule.init_panic_hook();
-
   return tfheModule as TfheBrowser;
 }
 
