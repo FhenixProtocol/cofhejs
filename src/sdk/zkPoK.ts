@@ -14,12 +14,12 @@ import {
   MAX_UINT8,
 } from "./consts";
 import {
-  type TfheCompactPublicKey,
-  type CompactPkeCrs,
-  type CompactCiphertextListBuilder,
-  type ProvenCompactCiphertextList,
-} from "tfhe";
-import { getTfhe } from "./tfhe-wrapper";
+  CompactCiphertextListBuilder,
+  CompactPkeCrs,
+  getTfhe,
+  ProvenCompactCiphertextList,
+  TfheCompactPublicKey,
+} from "./tfhe-wrapper";
 
 export const zkPack = (
   items: EncryptableItem[],
@@ -81,7 +81,7 @@ export const zkPack = (
     }
   }
 
-  return builder as CompactCiphertextListBuilder;
+  return builder as unknown as CompactCiphertextListBuilder;
 };
 
 export const zkProve = async (

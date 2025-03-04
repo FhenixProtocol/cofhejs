@@ -23,7 +23,7 @@ import {
   EncryptableItem,
 } from "../types";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
-import { initTfhe } from "./tfhe-wrapper";
+import { CompactPkeCrs, initTfhe, TfheCompactPublicKey } from "./tfhe-wrapper";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -399,8 +399,16 @@ async function encrypt<T>(item: T, securityZone = 0) {
 
   const encryptableItems = extractEncryptables(item);
 
-  const builder = zkPack(encryptableItems, fhePublicKey);
-  const proved = await zkProve(builder, crs, state.account, securityZone);
+  const builder = zkPack(
+    encryptableItems,
+    fhePublicKey as TfheCompactPublicKey,
+  );
+  const proved = await zkProve(
+    builder,
+    crs as CompactPkeCrs,
+    state.account,
+    securityZone,
+  );
   const zkVerifyRes = await zkVerify(
     coFheUrl,
     proved,

@@ -1,5 +1,5 @@
 import { Primitive, LiteralToPrimitive } from "type-fest";
-import { FheAllUTypes } from "./base";
+import { FheAllUTypes, FheTypes } from "./base";
 import {
   CoFheInBool,
   CoFheInUint8,
@@ -10,7 +10,6 @@ import {
   CoFheInUint256,
   CoFheInAddress,
 } from "./encrypted";
-import { FheTypes } from "tfhe";
 
 export type EncryptableBool = {
   data: boolean;

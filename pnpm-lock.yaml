@@ -15,8 +15,8 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       node-tfhe:
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: 0.11.1
+        version: 0.11.1
       tfhe:
         specifier: 0.11.1
         version: 0.11.1
@@ -1652,8 +1652,8 @@ packages:
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
-  node-tfhe@1.0.0:
-    resolution: {integrity: sha512-sIWvZ2yqaQ6uUg8MuDyuZ7OYlACIgzrj1NqWGl45UdnQXz19HjzolRLtV+78yVsQqbLy43zgRlBYrarcEl3+wA==}
+  node-tfhe@0.11.1:
+    resolution: {integrity: sha512-QFkIeIZ5IbdvhpkzImwakL2+sZFCTXCwGvOacE1NczR+zgrg5ixHU9KpjuuIi1YbbKFGJEMoSUmivDktuzFaKg==}
 
   npm-run-path@5.3.0:
     resolution: {integrity: sha512-ppwTtiJZq0O/ai0z7yfudtBpWIoxM8yE6nHi1X47eFR2EWORqfbu6CnPlNsjeN683eT0qG6H/Pyf9fCcvjnnnQ==}
@@ -3738,7 +3738,7 @@ snapshots:
 
   natural-compare@1.4.0: {}
 
-  node-tfhe@1.0.0: {}
+  node-tfhe@0.11.1: {}
 
   npm-run-path@5.3.0:
     dependencies:

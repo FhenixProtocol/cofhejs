@@ -11,9 +11,8 @@ import { afterEach } from "vitest";
 import { getAddress, ZeroAddress } from "ethers";
 import { Permit } from "../src/sdk/permit";
 import { SealingKey } from "../src/sdk/sealing";
-import { SealedBool, SealedUint, SealedAddress } from "../src/types";
+import { SealedBool, SealedUint, SealedAddress, FheTypes } from "../src/types";
 import { createTfhePublicKey } from "../src/types/keygen";
-import { FheTypes } from "tfhe";
 
 describe("Permit Tests", () => {
   let bobPublicKey: string;

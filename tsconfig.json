@@ -20,7 +20,7 @@
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "module": "CommonJS"
+    "module": "ES2020"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

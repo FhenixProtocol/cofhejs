@@ -1,6 +1,6 @@
 {
   "name": "cofhejs",
-  "version": "0.0.1-alpha.8",
+  "version": "0.0.1-alpha.9",
   "description": "The JavaScript SDK for Fhenix's CoFHE Service",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -53,7 +53,7 @@
   "dependencies": {
     "@types/node": "^20.0.0",
     "immer": "^10.1.1",
-    "node-tfhe": "^1.0.0",
+    "node-tfhe": "0.11.1",
     "tfhe": "0.11.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",

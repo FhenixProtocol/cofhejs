@@ -1,4 +1,4 @@
-import { FheTypes } from "tfhe";
+import { FheTypes } from "./base";
 
 export type EncryptedNumber = {
   data: Uint8Array;

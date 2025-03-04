@@ -9,8 +9,11 @@ import {
   AbstractSigner,
   InitializationParams,
 } from "../types";
-import { type TfheCompactPublicKey, type CompactPkeCrs } from "tfhe";
-import { getTfhe } from "./tfhe-wrapper";
+import {
+  getTfhe,
+  type TfheCompactPublicKey,
+  type CompactPkeCrs,
+} from "./tfhe-wrapper";
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -76,10 +79,7 @@ export const _sdkStore = createStore<SdkStore>(
 
 // Store getters / setters
 
-const _store_getFheKey = (
-  chainId: string | undefined,
-  securityZone = 0,
-): TfheCompactPublicKey | undefined => {
+const _store_getFheKey = (chainId: string | undefined, securityZone = 0) => {
   if (chainId == null || securityZone == null) return undefined;
 
   const serialized = _sdkStore.getState().fheKeys[chainId]?.[securityZone];
@@ -89,9 +89,7 @@ const _store_getFheKey = (
   return tfhe.TfheCompactPublicKey.deserialize(serialized);
 };
 
-export const _store_getConnectedChainFheKey = (
-  securityZone = 0,
-): TfheCompactPublicKey | undefined => {
+export const _store_getConnectedChainFheKey = (securityZone = 0) => {
   const state = _sdkStore.getState();
 
   if (securityZone == null) return undefined;
@@ -132,9 +130,7 @@ export const _store_setCrs = (
   );
 };
 
-export const _store_getCrs = (
-  chainId: string | undefined,
-): CompactPkeCrs | undefined => {
+export const _store_getCrs = (chainId: string | undefined) => {
   if (chainId == null) return undefined;
 
   const serialized = _sdkStore.getState().crs[chainId];
@@ -230,7 +226,7 @@ export const _store_fetchFheKey = async (
   chainId: string,
   securityZone: number = 0,
   forceFetch = false,
-): Promise<TfheCompactPublicKey> => {
+) => {
   const storedKey = _store_getFheKey(chainId, securityZone);
   if (storedKey != null && !forceFetch) return storedKey;
 
@@ -291,9 +287,9 @@ export const _store_fetchFheKey = async (
   try {
     const tfhe = getTfhe();
     const key = tfhe.TfheCompactPublicKey.deserialize(pk_buff);
-    _store_setFheKey(chainId, securityZone, key);
+    _store_setFheKey(chainId, securityZone, key as TfheCompactPublicKey);
     const crs = tfhe.CompactPkeCrs.deserialize(crs_buff);
-    _store_setCrs(chainId, crs);
+    _store_setCrs(chainId, crs as CompactPkeCrs);
     return key;
   } catch (err) {
     throw new Error(`Error deserializing public key ${err}`);

@@ -24,8 +24,8 @@ import {
   CoFheInBool,
   CoFheInUint8,
   Result,
+  FheTypes,
 } from "../src/types";
-import { FheTypes } from "tfhe";
 import { createTfhePublicKey } from "../src/types/keygen";
 
 describe("Sdk Tests", () => {
@@ -219,6 +219,9 @@ describe("Sdk Tests", () => {
       Readonly<[string, bigint, CoFheInAddress]>,
       CoFheInUint8,
     ];
+
+    console.log("bob address", bobAddress);
+    console.log(nestedEncrypt.data);
 
     expectTypeOf<Readonly<ExpectedEncryptedType>>().toEqualTypeOf(
       nestedEncrypt.data!,

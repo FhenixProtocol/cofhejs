@@ -13,12 +13,12 @@ export const ZK_VERIFIER_CONTAINER_NAME = "cofhejs-test-zk-verifier";
 
 // Function to run a Docker container using the 'execPromise' function
 export async function runZkVerifierContainer() {
-  const image = "ghcr.io/fhenixprotocol/zk-verifier:alpha-no-fheos";
+  const image = "ghcr.io/fhenixprotocol/zk-verifier:alpha-no-fheos ";
   const ports = "-p 3000:3000";
 
   const remove = `docker kill ${ZK_VERIFIER_CONTAINER_NAME}`;
 
-  const command = `docker run --rm --name ${ZK_VERIFIER_CONTAINER_NAME} ${ports} -d ${image}`;
+  const command = `docker run --rm --name ${ZK_VERIFIER_CONTAINER_NAME} --env RUST_LOG=trace ${ports} -d ${image}`;
 
   try {
     try {
@@ -37,7 +37,7 @@ export async function killZkVerifierContainer() {
   const removePrevious = `docker kill ${ZK_VERIFIER_CONTAINER_NAME}`;
 
   try {
-    await execPromise(removePrevious);
+    // await execPromise(removePrevious);
   } catch (error: any) {
     console.error(error.message);
     throw new Error("Failed to remove docker container");
