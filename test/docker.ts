@@ -37,7 +37,7 @@ export async function killZkVerifierContainer() {
   const removePrevious = `docker kill ${ZK_VERIFIER_CONTAINER_NAME}`;
 
   try {
-    // await execPromise(removePrevious);
+    await execPromise(removePrevious);
   } catch (error: any) {
     console.error(error.message);
     throw new Error("Failed to remove docker container");

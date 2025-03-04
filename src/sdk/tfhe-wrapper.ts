@@ -7,15 +7,15 @@ let tfheModule: TfheBrowser | typeof import("node-tfhe");
 
 export async function initTfhe(target: "web" | "node") {
   if (!tfheModule) {
-    const moduleName = target === "node" ? "node-tfhe" : "tfhe";
-
     if (typeof require !== "undefined") {
       // Use `createRequire` to load ESM module in CJS environment
       const requireModule = createRequire(import.meta.url);
-      tfheModule = requireModule(moduleName);
+      tfheModule =
+        target === "node" ? requireModule("node-tfhe") : await import("tfhe");
     } else {
       // Use dynamic import in ESM
-      tfheModule = await import(moduleName);
+      tfheModule =
+        target === "node" ? await import("node-tfhe") : await import("tfhe");
     }
   }
 

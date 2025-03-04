@@ -177,10 +177,13 @@ export const zkVerify = async (
 
     if (json.status === "success") {
       return ResultOk(
-        json.data.map(({ ct_hash, signature, recid }) => ({
-          ct_hash,
-          signature: `${signature}${recid + 27}`,
-        })),
+        json.data.map(({ ct_hash, signature, recid }) => {
+          console.log({ ct_hash, signature, recid });
+          return {
+            ct_hash,
+            signature: signature + (recid + 27).toString(16).padStart(2, "0"),
+          };
+        }),
       );
     } else {
       return ResultErr(json.error);
