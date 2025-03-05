@@ -8,10 +8,6 @@ import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
 import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
 import { afterEach } from "vitest";
 import { getAddress } from "ethers";
-import { cofhejs } from "../src/sdk";
-import { Permit, permitStore } from "../src/sdk/permit";
-import { _permitStore } from "../src/sdk/permit/store";
-import { SealingKey } from "../src/sdk/sealing";
 import {
   InitializationParams,
   Encryptable,
@@ -25,8 +21,10 @@ import {
   CoFheInUint8,
   Result,
   FheTypes,
+  EncryptStep,
 } from "../src/types";
-import { createTfhePublicKey } from "../src/types/keygen";
+import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
+import { _permitStore, permitStore } from "../src/core/permit/store";
 
 describe("Sdk Tests", () => {
   let bobPublicKey: string;
@@ -47,7 +45,6 @@ describe("Sdk Tests", () => {
 
   const initSdkWithBob = async () => {
     return cofhejs.initialize({
-      target: "node",
       provider: bobProvider,
       signer: bobSigner,
       coFheUrl,
@@ -55,7 +52,6 @@ describe("Sdk Tests", () => {
   };
   const initSdkWithAda = async () => {
     return cofhejs.initialize({
-      target: "node",
       provider: adaProvider,
       signer: adaSigner,
       coFheUrl,
@@ -63,12 +59,12 @@ describe("Sdk Tests", () => {
   };
 
   beforeAll(async () => {
-    bobPublicKey = await createTfhePublicKey("node");
+    bobPublicKey = await createTfhePublicKey();
     bobProvider = new MockProvider(bobPublicKey, BobWallet);
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
 
-    adaPublicKey = await createTfhePublicKey("node");
+    adaPublicKey = await createTfhePublicKey();
     adaProvider = new MockProvider(adaPublicKey, AdaWallet);
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();
@@ -80,7 +76,7 @@ describe("Sdk Tests", () => {
   afterEach(() => {
     localStorage.clear();
     cofhejs.store.setState(cofhejs.store.getInitialState());
-    _permitStore.setState(_permitStore.getInitialState());
+    permitStore.store.setState(permitStore.store.getInitialState());
   });
 
   it("should be in happy-dom environment", async () => {
@@ -208,14 +204,27 @@ describe("Sdk Tests", () => {
       issuer: bobAddress,
     });
 
-    const nestedEncrypt = await cofhejs.encrypt([
+    const logState = (state: EncryptStep) => {
+      console.log(`Log Encrypt State :: ${state}`);
+    };
+
+    const nestedEncrypt = await cofhejs.encrypt(logState, [
       { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
       ["hello", 20n, Encryptable.address(contractAddress)],
       Encryptable.uint8("10"),
     ] as const);
 
+    console.log("nestedEncrypt", nestedEncrypt);
+
+    expect(nestedEncrypt.success).toEqual(true);
+    expect(nestedEncrypt.data).to.not.equal(undefined);
+
     type ExpectedEncryptedType = [
-      Readonly<{ a: CoFheInBool; b: CoFheInUint64; c: string }>,
+      {
+        readonly a: CoFheInBool;
+        readonly b: CoFheInUint64;
+        readonly c: string;
+      },
       Readonly<[string, bigint, CoFheInAddress]>,
       CoFheInUint8,
     ];
@@ -223,9 +232,7 @@ describe("Sdk Tests", () => {
     console.log("bob address", bobAddress);
     console.log(nestedEncrypt.data);
 
-    expectTypeOf<Readonly<ExpectedEncryptedType>>().toEqualTypeOf(
-      nestedEncrypt.data!,
-    );
+    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
   });
 
   // PERMITS

@@ -1,19 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
-import { fromHexString } from "./utils";
-import { chainIsHardhat } from "./utils.hardhat";
+import { fromHexString } from "../utils/utils";
+import { chainIsHardhat } from "../utils/hardhat";
 import { PUBLIC_KEY_LENGTH_MIN } from "./consts";
 import {
   AbstractProvider,
   AbstractSigner,
   InitializationParams,
-} from "../types";
-import {
-  getTfhe,
-  type TfheCompactPublicKey,
-  type CompactPkeCrs,
-} from "./tfhe-wrapper";
+} from "../../types";
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -81,12 +76,7 @@ export const _sdkStore = createStore<SdkStore>(
 
 const _store_getFheKey = (chainId: string | undefined, securityZone = 0) => {
   if (chainId == null || securityZone == null) return undefined;
-
-  const serialized = _sdkStore.getState().fheKeys[chainId]?.[securityZone];
-  if (serialized == null) return undefined;
-
-  const tfhe = getTfhe();
-  return tfhe.TfheCompactPublicKey.deserialize(serialized);
+  return _sdkStore.getState().fheKeys[chainId]?.[securityZone];
 };
 
 export const _store_getConnectedChainFheKey = (securityZone = 0) => {
@@ -95,49 +85,12 @@ export const _store_getConnectedChainFheKey = (securityZone = 0) => {
   if (securityZone == null) return undefined;
   if (state.chainId == null) return undefined;
 
-  const serialized = state.fheKeys[state.chainId]?.[securityZone];
-  if (serialized == null) return undefined;
-
-  const tfhe = getTfhe();
-  return tfhe.TfheCompactPublicKey.deserialize(serialized);
-};
-
-export const _store_setFheKey = (
-  chainId: string | undefined,
-  securityZone: number | undefined,
-  fheKey: TfheCompactPublicKey | undefined,
-) => {
-  if (chainId == null || securityZone == null) return;
-
-  _sdkStore.setState(
-    produce<SdkStore>((state) => {
-      if (state.fheKeys[chainId] == null) state.fheKeys[chainId] = {};
-      state.fheKeys[chainId][securityZone] = fheKey?.serialize();
-    }),
-  );
-};
-
-export const _store_setCrs = (
-  chainId: string | undefined,
-  crs: CompactPkeCrs | undefined,
-) => {
-  if (chainId == null) return;
-
-  _sdkStore.setState(
-    produce<SdkStore>((state) => {
-      state.crs[chainId] = crs?.serialize(false);
-    }),
-  );
+  return state.fheKeys[state.chainId]?.[securityZone];
 };
 
 export const _store_getCrs = (chainId: string | undefined) => {
   if (chainId == null) return undefined;
-
-  const serialized = _sdkStore.getState().crs[chainId];
-  if (serialized == null) return undefined;
-
-  const tfhe = getTfhe();
-  return tfhe.CompactPkeCrs.deserialize(serialized);
+  return _sdkStore.getState().crs[chainId];
 };
 
 const getChainIdFromProvider = async (
@@ -159,6 +112,8 @@ export const _store_initialize = async (params: InitializationParams) => {
     signer,
     securityZones = [0],
     coFheUrl = undefined,
+    tfhePublicKeySerializer: tfheCompactPublicKeySerializer,
+    compactPkeCrsSerializer,
   } = params;
 
   _sdkStore.setState({
@@ -207,7 +162,13 @@ export const _store_initialize = async (params: InitializationParams) => {
   if (!chainIsHardhat(chainId) && !_sdkStore.getState().fheKeysInitialized) {
     await Promise.all(
       securityZones.map((securityZone) =>
-        _store_fetchFheKey(chainId, securityZone, true),
+        _store_fetchKeys(
+          chainId,
+          securityZone,
+          tfheCompactPublicKeySerializer,
+          compactPkeCrsSerializer,
+          true,
+        ),
       ),
     );
   }
@@ -222,13 +183,15 @@ export const _store_initialize = async (params: InitializationParams) => {
  * @param securityZone - The security zone for which to retrieve the key (default 0).
  * @returns {Promise<TfheCompactPublicKey>} - The retrieved public key.
  */
-export const _store_fetchFheKey = async (
+export const _store_fetchKeys = async (
   chainId: string,
   securityZone: number = 0,
+  tfheCompactPublicKeySerializer: (buff: Uint8Array) => void,
+  compactPkeCrsSerializer: (buff: Uint8Array) => void,
   forceFetch = false,
 ) => {
   const storedKey = _store_getFheKey(chainId, securityZone);
-  if (storedKey != null && !forceFetch) return storedKey;
+  if (storedKey != null && !forceFetch) return;
 
   const coFheUrl = _sdkStore.getState().coFheUrl;
   if (coFheUrl == null || typeof coFheUrl !== "string") {
@@ -285,13 +248,22 @@ export const _store_fetchFheKey = async (
   const crs_buff = fromHexString(crs_data);
 
   try {
-    const tfhe = getTfhe();
-    const key = tfhe.TfheCompactPublicKey.deserialize(pk_buff);
-    _store_setFheKey(chainId, securityZone, key as TfheCompactPublicKey);
-    const crs = tfhe.CompactPkeCrs.deserialize(crs_buff);
-    _store_setCrs(chainId, crs as CompactPkeCrs);
-    return key;
+    tfheCompactPublicKeySerializer(pk_buff);
   } catch (err) {
-    throw new Error(`Error deserializing public key ${err}`);
+    throw new Error(`Error serializing public key ${err}`);
   }
+
+  try {
+    compactPkeCrsSerializer(crs_buff);
+  } catch (err) {
+    throw new Error(`Error serializing CRS ${err}`);
+  }
+
+  _sdkStore.setState(
+    produce<SdkStore>((state) => {
+      if (state.fheKeys[chainId] == null) state.fheKeys[chainId] = {};
+      state.fheKeys[chainId][securityZone] = pk_buff;
+      state.crs[chainId] = crs_buff;
+    }),
+  );
 };

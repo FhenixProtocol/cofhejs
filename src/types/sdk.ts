@@ -13,9 +13,10 @@ export interface AbstractSigner {
 }
 
 export type InitializationParams = {
-  target: "web" | "node";
   provider: AbstractProvider;
   signer?: AbstractSigner;
   securityZones?: number[];
   coFheUrl?: string;
+  tfhePublicKeySerializer: (buff: Uint8Array) => void;
+  compactPkeCrsSerializer: (buff: Uint8Array) => void;
 };

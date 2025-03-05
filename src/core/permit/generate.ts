@@ -1,6 +1,5 @@
-import { Permission } from "../../types";
-import { EIP712Message, EIP712Types } from "../../types/EIP712";
 import { ZeroAddress } from "ethers";
+import { EIP712Message, EIP712Types, Permission } from "../../types";
 
 const PermitSignatureAllFields = [
   { name: "issuer", type: "address" },

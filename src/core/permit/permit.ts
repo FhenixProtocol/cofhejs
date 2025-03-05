@@ -7,8 +7,6 @@ import {
   SignatureTypes,
 } from "./generate";
 import { FullyFormedPermitValidator, PermitParamsValidator } from "./permit.z";
-import { GenerateSealingKey, SealingKey } from "../sealing";
-import { chainIsHardhat, hardhatMockUnseal } from "../utils.hardhat";
 import {
   Permission,
   PermitInterface,
@@ -22,6 +20,8 @@ import {
   isSealedUint,
   AbstractSigner,
 } from "../../types";
+import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
+import { chainIsHardhat, hardhatMockUnseal } from "../utils";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**

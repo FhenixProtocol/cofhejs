@@ -1,76 +1,81 @@
-import { EncryptableItem, Result, ResultErr, ResultOk } from "../types";
 import {
-  fromHexString,
-  toBigInt,
-  toBigIntOrThrow,
-  validateBigIntInRange,
-} from "./utils";
-import {
-  MAX_UINT128,
-  MAX_UINT16,
-  MAX_UINT256,
-  MAX_UINT32,
-  MAX_UINT64,
-  MAX_UINT8,
-} from "./consts";
-import {
+  TfheCompactPublicKey,
   CompactCiphertextListBuilder,
   CompactPkeCrs,
-  getTfhe,
   ProvenCompactCiphertextList,
-  TfheCompactPublicKey,
-} from "./tfhe-wrapper";
+  ZkComputeLoad,
+} from "tfhe";
+import {
+  MAX_UINT8,
+  MAX_UINT16,
+  MAX_UINT32,
+  MAX_UINT64,
+  MAX_UINT128,
+  MAX_UINT256,
+} from "../core/sdk/consts";
+import {
+  toBigIntOrThrow,
+  validateBigIntInRange,
+  fromHexString,
+  toBigInt,
+} from "../core/utils/utils";
+import {
+  EncryptableItem,
+  FheTypes,
+  Result,
+  ResultErr,
+  ResultOk,
+} from "../types";
 
 export const zkPack = (
   items: EncryptableItem[],
   publicKey: TfheCompactPublicKey,
 ) => {
-  const tfhe = getTfhe();
-  const builder = tfhe.ProvenCompactCiphertextList.builder(publicKey);
+  const builder = ProvenCompactCiphertextList.builder(publicKey);
 
   for (const item of items) {
     switch (item.utype) {
-      case tfhe.FheTypes.Bool: {
+      case FheTypes.Bool: {
         builder.push_boolean(item.data);
         break;
       }
-      case tfhe.FheTypes.Uint8: {
+      case FheTypes.Uint8: {
         const bint = toBigIntOrThrow(item.data);
         validateBigIntInRange(bint, MAX_UINT8);
         builder.push_u8(parseInt(bint.toString()));
         break;
       }
-      case tfhe.FheTypes.Uint16: {
+      case FheTypes.Uint16: {
         const bint = toBigIntOrThrow(item.data);
         validateBigIntInRange(bint, MAX_UINT16);
         builder.push_u16(parseInt(bint.toString()));
         break;
       }
-      case tfhe.FheTypes.Uint32: {
+      case FheTypes.Uint32: {
         const bint = toBigIntOrThrow(item.data);
         validateBigIntInRange(bint, MAX_UINT32);
         builder.push_u32(parseInt(bint.toString()));
         break;
       }
-      case tfhe.FheTypes.Uint64: {
+      case FheTypes.Uint64: {
         const bint = toBigIntOrThrow(item.data);
         validateBigIntInRange(bint, MAX_UINT64);
         builder.push_u64(bint);
         break;
       }
-      case tfhe.FheTypes.Uint128: {
+      case FheTypes.Uint128: {
         const bint = toBigIntOrThrow(item.data);
         validateBigIntInRange(bint, MAX_UINT128);
         builder.push_u128(bint);
         break;
       }
-      case tfhe.FheTypes.Uint256: {
+      case FheTypes.Uint256: {
         const bint = toBigIntOrThrow(item.data);
         validateBigIntInRange(bint, MAX_UINT256);
         builder.push_u256(bint);
         break;
       }
-      case tfhe.FheTypes.Uint160: {
+      case FheTypes.Uint160: {
         const bint =
           typeof item.data === "string"
             ? toBigInt(fromHexString(item.data))
@@ -98,8 +103,6 @@ export const zkProve = async (
 
   return new Promise((resolve) => {
     setTimeout(() => {
-      const tfhe = getTfhe();
-
       const compactList = builder.build_with_proof_packed(
         crs,
         metadata,
@@ -107,7 +110,7 @@ export const zkProve = async (
         //   account_address: address,
         //   security_zone: securityZone,
         // }),
-        tfhe.ZkComputeLoad.Verify,
+        ZkComputeLoad.Verify,
       );
 
       resolve(compactList);
@@ -178,7 +181,6 @@ export const zkVerify = async (
     if (json.status === "success") {
       return ResultOk(
         json.data.map(({ ct_hash, signature, recid }) => {
-          console.log({ ct_hash, signature, recid });
           return {
             ct_hash,
             signature: signature + (recid + 27).toString(16).padStart(2, "0"),

@@ -1,4 +1,4 @@
-import { SealingKey } from "../sdk/sealing";
+import { SealingKey } from "../core/sdk/sealing";
 
 /**
  * Type representing the full Permit

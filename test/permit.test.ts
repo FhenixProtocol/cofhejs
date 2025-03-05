@@ -9,10 +9,9 @@ import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
 import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
 import { afterEach } from "vitest";
 import { getAddress, ZeroAddress } from "ethers";
-import { Permit } from "../src/sdk/permit";
-import { SealingKey } from "../src/sdk/sealing";
 import { SealedBool, SealedUint, SealedAddress, FheTypes } from "../src/types";
-import { createTfhePublicKey } from "../src/types/keygen";
+
+import { createTfhePublicKey, Permit, SealingKey } from "../src/node";
 
 describe("Permit Tests", () => {
   let bobPublicKey: string;
@@ -31,12 +30,12 @@ describe("Permit Tests", () => {
   const uniswapProjectId = "UNISWAP";
 
   beforeAll(async () => {
-    bobPublicKey = await createTfhePublicKey("node");
+    bobPublicKey = await createTfhePublicKey();
     bobProvider = new MockProvider(bobPublicKey, BobWallet);
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
 
-    adaPublicKey = await createTfhePublicKey("node");
+    adaPublicKey = await createTfhePublicKey();
     adaProvider = new MockProvider(adaPublicKey, AdaWallet);
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Permit, permitStore, PermitParamsValidator } from "./permit";
-import { isString } from "./validation";
+import { Permit, permitStore, PermitParamsValidator } from "../permit";
+import { isString } from "../utils/validation";
 import {
   _sdkStore,
   _store_getConnectedChainFheKey,
@@ -21,32 +21,19 @@ import {
   MappedUnsealedTypes,
   InitializationParams,
   EncryptableItem,
-} from "../types";
-import { zkPack, zkProve, zkVerify } from "./zkPoK";
-import { CompactPkeCrs, initTfhe, TfheCompactPublicKey } from "./tfhe-wrapper";
+} from "../../types";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
  * Initializes `fhevm` client FHE wasm module and fetches the provided chain's FHE publicKey.
  * If a valid signer is provided, a `permit/permission` is generated automatically
  */
-const initialize = async (
+export const initializeCore = async (
   params: InitializationParams & {
     ignoreErrors?: boolean;
     generatePermit?: boolean;
   },
 ): Promise<Result<Permit | undefined>> => {
-  // Initialize the fhevm
-  await initTfhe(params.target).catch((err: unknown) => {
-    if (params.ignoreErrors) {
-      return undefined;
-    } else {
-      return ResultErr(
-        `initialize :: failed to initialize cofhejs - is the network FHE-enabled? ${err}`,
-      );
-    }
-  });
-
   if (params.provider == null)
     return ResultErr(
       "initialize :: missing provider - Please provide an AbstractProvider interface",
@@ -116,7 +103,7 @@ const _checkInitialized = (
  * { type: "self", issuer: initializedUserAddress }
  * @returns {Result<Permit>} - Newly created Permit as a Result object
  */
-const createPermit = async (
+export const createPermit = async (
   options?: PermitOptions,
 ): Promise<Result<Permit>> => {
   const state = _sdkStore.getState();
@@ -156,7 +143,7 @@ const createPermit = async (
  *
  * @param {string | PermitInterface} imported - Permit to import as a text string or PermitInterface
  */
-const importPermit = async (
+export const importPermit = async (
   imported: string | PermitInterface,
 ): Promise<Result<Permit>> => {
   const state = _sdkStore.getState();
@@ -223,7 +210,7 @@ const importPermit = async (
  *
  * @param {string} hash - The `Permit.getHash` of the target permit.
  */
-const selectActivePermit = (hash: string): Result<Permit> => {
+export const selectActivePermit = (hash: string): Result<Permit> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -248,7 +235,7 @@ const selectActivePermit = (hash: string): Result<Permit> => {
  * @param {string} hash - Optional `Permit.getHash` of the permit.
  * @returns {Result<Permit>} - The active permit or permit associated with `hash` as a Result object.
  */
-const getPermit = (hash?: string): Result<Permit> => {
+export const getPermit = (hash?: string): Result<Permit> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -278,7 +265,7 @@ const getPermit = (hash?: string): Result<Permit> => {
  * @param {string} hash - Optional hash of the permission to get, defaults to active permit's permission
  * @returns {Result<Permission>} - The active permission or permission associated with `hash`, as a result object.
  */
-const getPermission = (hash?: string): Result<Permission> => {
+export const getPermission = (hash?: string): Result<Permission> => {
   const permitResult = getPermit(hash);
   if (!permitResult.success)
     return ResultErr(`${getPermission.name} :: ${permitResult.error}`);
@@ -290,7 +277,7 @@ const getPermission = (hash?: string): Result<Permission> => {
  * Exports all stored permits.
  * @returns {Result<Record<string, Permit>>} - All stored permits.
  */
-const getAllPermits = (): Result<Record<string, Permit>> => {
+export const getAllPermits = (): Result<Record<string, Permit>> => {
   const state = _sdkStore.getState();
 
   const initialized = _checkInitialized(state);
@@ -300,80 +287,14 @@ const getAllPermits = (): Result<Record<string, Permit>> => {
   return ResultOk(permitStore.getPermits(state.account));
 };
 
-// Encrypt
+// Encrypt (Steps)
 
-function extractEncryptables<T>(item: T): EncryptableItem[];
-function extractEncryptables<T extends any[]>(item: [...T]): EncryptableItem[];
-function extractEncryptables<T>(item: T) {
-  if (isEncryptableItem(item)) {
-    return item;
-  }
-
-  // Object | Array
-  if (typeof item === "object" && item !== null) {
-    if (Array.isArray(item)) {
-      // Array - recurse
-      return item.flatMap((nestedItem) => extractEncryptables(nestedItem));
-    } else {
-      // Object - recurse
-      return Object.values(item).flatMap((value) => extractEncryptables(value));
-    }
-  }
-
-  return [];
-}
-
-function replaceEncryptables<T>(
-  item: T,
-  encryptedItems: CoFheInItem[],
-): [Encrypted_Inputs<T>, CoFheInItem[]];
-function replaceEncryptables<T extends any[]>(
-  item: [...T],
-  encryptedItems: CoFheInItem[],
-): [...Encrypted_Inputs<T>, CoFheInItem[]];
-function replaceEncryptables<T>(item: T, encryptedItems: CoFheInItem[]) {
-  if (isEncryptableItem(item)) {
-    return [encryptedItems[0], encryptedItems.slice(1)];
-  }
-
-  // Object | Array
-  if (typeof item === "object" && item !== null) {
-    if (Array.isArray(item)) {
-      // Array - recurse
-      return item.reduce<[any[], CoFheInItem[]]>(
-        ([acc, remaining], item) => {
-          const [newItem, newRemaining] = replaceEncryptables(item, remaining);
-          return [[...acc, newItem], newRemaining];
-        },
-        [[], encryptedItems],
-      );
-    } else {
-      // Object - recurse
-      return Object.entries(item).reduce<[Record<string, any>, CoFheInItem[]]>(
-        ([acc, remaining], [key, value]) => {
-          const [newValue, newRemaining] = replaceEncryptables(
-            value,
-            remaining,
-          );
-          return [{ ...acc, [key]: newValue }, newRemaining];
-        },
-        [{}, encryptedItems],
-      );
-    }
-  }
-
-  return [item, encryptedItems];
-}
-
-async function encrypt<T>(
-  item: T,
-  securityZone?: number,
-): Promise<Result<Encrypted_Inputs<T>>>;
-async function encrypt<T extends any[]>(
-  item: [...T],
-  securityZone?: number,
-): Promise<Result<[...Encrypted_Inputs<T>]>>;
-async function encrypt<T>(item: T, securityZone = 0) {
+export function encryptGetKeys(): Result<{
+  fhePublicKey: Uint8Array;
+  crs: Uint8Array;
+  coFheUrl: string;
+  account: string;
+}> {
   const state = _sdkStore.getState();
 
   // Only need to check `fheKeysInitialized`, signer and provider not needed for encryption
@@ -397,50 +318,69 @@ async function encrypt<T>(item: T, securityZone = 0) {
   const coFheUrl = state.coFheUrl;
   if (coFheUrl == null) return ResultErr("encrypt :: coFheUrl not initialized");
 
-  const encryptableItems = extractEncryptables(item);
+  return ResultOk({ fhePublicKey, crs, coFheUrl, account: state.account });
+}
 
-  const builder = zkPack(
-    encryptableItems,
-    fhePublicKey as TfheCompactPublicKey,
-  );
-  const proved = await zkProve(
-    builder,
-    crs as CompactPkeCrs,
-    state.account,
-    securityZone,
-  );
-  const zkVerifyRes = await zkVerify(
-    coFheUrl,
-    proved,
-    state.account,
-    securityZone,
-  );
+export function encryptExtract<T>(item: T): EncryptableItem[];
+export function encryptExtract<T extends any[]>(
+  item: [...T],
+): EncryptableItem[];
+export function encryptExtract<T>(item: T) {
+  if (isEncryptableItem(item)) {
+    return item;
+  }
 
-  if (!zkVerifyRes.success)
-    return ResultErr(
-      `encrypt :: ZK proof verification failed - ${zkVerifyRes.error}`,
-    );
+  // Object | Array
+  if (typeof item === "object" && item !== null) {
+    if (Array.isArray(item)) {
+      // Array - recurse
+      return item.flatMap((nestedItem) => encryptExtract(nestedItem));
+    } else {
+      // Object - recurse
+      return Object.values(item).flatMap((value) => encryptExtract(value));
+    }
+  }
 
-  const inItems: CoFheInItem[] = zkVerifyRes.data.map(
-    ({ ct_hash, signature }, index) => ({
-      hash: BigInt(ct_hash),
-      securityZone,
-      utype: encryptableItems[index].utype,
-      signature,
-    }),
-  );
+  return [];
+}
 
-  const [preparedInputItems, remainingInItems] = replaceEncryptables(
-    item,
-    inItems,
-  );
+export function encryptReplace<T>(
+  item: T,
+  encryptedItems: CoFheInItem[],
+): [Encrypted_Inputs<T>, CoFheInItem[]];
+export function encryptReplace<T extends any[]>(
+  item: [...T],
+  encryptedItems: CoFheInItem[],
+): [...Encrypted_Inputs<T>, CoFheInItem[]];
+export function encryptReplace<T>(item: T, encryptedItems: CoFheInItem[]) {
+  if (isEncryptableItem(item)) {
+    return [encryptedItems[0], encryptedItems.slice(1)];
+  }
 
-  if (remainingInItems.length !== 0)
-    return ResultErr(
-      "encrypt :: some encrypted inputs remaining after replacement",
-    );
+  // Object | Array
+  if (typeof item === "object" && item !== null) {
+    if (Array.isArray(item)) {
+      // Array - recurse
+      return item.reduce<[any[], CoFheInItem[]]>(
+        ([acc, remaining], item) => {
+          const [newItem, newRemaining] = encryptReplace(item, remaining);
+          return [[...acc, newItem], newRemaining];
+        },
+        [[], encryptedItems],
+      );
+    } else {
+      // Object - recurse
+      return Object.entries(item).reduce<[Record<string, any>, CoFheInItem[]]>(
+        ([acc, remaining], [key, value]) => {
+          const [newValue, newRemaining] = encryptReplace(value, remaining);
+          return [{ ...acc, [key]: newValue }, newRemaining];
+        },
+        [{}, encryptedItems],
+      );
+    }
+  }
 
-  return ResultOk(preparedInputItems);
+  return [item, encryptedItems];
 }
 
 // Unseal
@@ -454,7 +394,7 @@ async function encrypt<T>(item: T, securityZone = 0) {
  * @param {string} hash - The hash of the permit to use for this operation, defaults to active permit hash
  * @returns bigint - The unsealed message.
  */
-const unsealCiphertext = (
+export const unsealCiphertext = (
   ciphertext: string,
   account?: string,
   hash?: string,
@@ -499,7 +439,7 @@ const unsealCiphertext = (
  * @param {any | any[]} item - Array, object, or item. Any nested `SealedItems` will be unsealed.
  * @returns - Recursively unsealed data in the target type, SealedBool -> boolean, SealedAddress -> string, etc.
  */
-function unseal<T>(
+export function unseal<T>(
   item: T,
   account?: string,
   hash?: string,
@@ -528,22 +468,3 @@ function unseal<T>(
 
   return ResultOk(unsealed);
 }
-
-// Export
-
-export const cofhejs = {
-  store: _sdkStore,
-  initialize,
-
-  createPermit,
-  importPermit,
-  selectActivePermit,
-  getPermit,
-  getPermission,
-  getAllPermits,
-
-  encrypt: encrypt,
-
-  unsealCiphertext,
-  unseal,
-};

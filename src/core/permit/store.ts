@@ -1,8 +1,8 @@
 import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
 import { produce } from "immer";
-import { SerializedPermit } from "../../types";
 import { Permit } from "./permit";
+import { SerializedPermit } from "../../types";
 
 type AccountRecord<T> = Record<string, T>;
 type HashRecord<T> = Record<string, T>;

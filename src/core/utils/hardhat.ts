@@ -1,4 +1,4 @@
-import { EncryptedNumber } from "../types";
+import { EncryptedNumber } from "../../types";
 import { bigintToUint8Array, stringToUint8Array } from "./utils";
 
 // HARDHAT MOCKS

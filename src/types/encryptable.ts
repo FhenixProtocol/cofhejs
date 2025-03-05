@@ -111,3 +111,12 @@ export function isEncryptableItem(value: any): value is EncryptableItem {
     FheAllUTypes.includes(value.utype)
   );
 }
+
+export enum EncryptStep {
+  Extract = "extract",
+  Pack = "pack",
+  Prove = "prove",
+  Verify = "verify",
+  Replace = "replace",
+  Done = "done",
+}
