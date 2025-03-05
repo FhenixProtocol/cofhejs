@@ -294,6 +294,7 @@ export function encryptGetKeys(): Result<{
   crs: Uint8Array;
   coFheUrl: string;
   account: string;
+  chainId: string;
 }> {
   const state = _sdkStore.getState();
 
@@ -307,6 +308,9 @@ export function encryptGetKeys(): Result<{
   if (state.account == null)
     return ResultErr("encrypt :: account uninitialized");
 
+  if (state.chainId == null)
+    return ResultErr("encrypt :: chainId uninitialized");
+
   const fhePublicKey = _store_getConnectedChainFheKey(0);
   if (fhePublicKey == null)
     return ResultErr("encrypt :: fheKey for current chain not found");
@@ -318,7 +322,13 @@ export function encryptGetKeys(): Result<{
   const coFheUrl = state.coFheUrl;
   if (coFheUrl == null) return ResultErr("encrypt :: coFheUrl not initialized");
 
-  return ResultOk({ fhePublicKey, crs, coFheUrl, account: state.account });
+  return ResultOk({
+    fhePublicKey,
+    crs,
+    coFheUrl,
+    account: state.account,
+    chainId: state.chainId,
+  });
 }
 
 export function encryptExtract<T>(item: T): EncryptableItem[];

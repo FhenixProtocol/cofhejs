@@ -20,12 +20,7 @@
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "module": "ES2020",
-    "baseUrl": ".",
-    "paths": {
-      "cofhejs/web": ["./src/web/index.ts"],
-      "cofhejs/node": ["./src/node/index.ts"]
-    }
+    "module": "ES2020"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

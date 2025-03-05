@@ -73,7 +73,7 @@ async function encrypt<T extends any[]>(
   const keysResult = encryptGetKeys();
 
   if (!keysResult.success) return ResultErr(`encrypt :: ${keysResult.error}`);
-  const { fhePublicKey, crs, coFheUrl, account } = keysResult.data;
+  const { fhePublicKey, crs, coFheUrl, account, chainId } = keysResult.data;
 
   const encryptableItems = encryptExtract(item);
 
@@ -91,11 +91,18 @@ async function encrypt<T extends any[]>(
     CompactPkeCrs.deserialize(crs),
     account,
     securityZone,
+    chainId,
   );
 
   setState(EncryptStep.Verify);
 
-  const zkVerifyRes = await zkVerify(coFheUrl, proved, account, securityZone);
+  const zkVerifyRes = await zkVerify(
+    coFheUrl,
+    proved,
+    account,
+    securityZone,
+    chainId,
+  );
 
   if (!zkVerifyRes.success)
     return ResultErr(

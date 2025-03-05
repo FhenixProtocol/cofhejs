@@ -18,6 +18,7 @@ import {
   validateBigIntInRange,
   fromHexString,
   toBigInt,
+  toHexString,
 } from "../core/utils/utils";
 import {
   EncryptableItem,
@@ -26,6 +27,7 @@ import {
   ResultErr,
   ResultOk,
 } from "../types";
+import { concatSigRecid, constructZkPoKMetadata } from "../core/utils/zkPoK";
 
 export const zkPack = (
   items: EncryptableItem[],
@@ -86,7 +88,7 @@ export const zkPack = (
     }
   }
 
-  return builder as unknown as CompactCiphertextListBuilder;
+  return builder;
 };
 
 export const zkProve = async (
@@ -94,22 +96,19 @@ export const zkProve = async (
   crs: CompactPkeCrs,
   address: string,
   securityZone: number,
+  chainId: string,
 ): Promise<ProvenCompactCiphertextList> => {
-  const sz_byte = new Uint8Array([securityZone]);
-
-  const metadata = new Uint8Array(address.length + 1);
-  metadata.set(new TextEncoder().encode(address));
-  metadata.set([sz_byte[0]], address.length);
+  const metadata = constructZkPoKMetadata(
+    address,
+    securityZone,
+    parseInt(chainId),
+  );
 
   return new Promise((resolve) => {
     setTimeout(() => {
       const compactList = builder.build_with_proof_packed(
         crs,
         metadata,
-        // recordToUint8Array({
-        //   account_address: address,
-        //   security_zone: securityZone,
-        // }),
         ZkComputeLoad.Verify,
       );
 
@@ -134,22 +133,22 @@ export const zkVerify = async (
   compactList: ProvenCompactCiphertextList,
   address: string,
   securityZone: number,
+  chainId: string,
 ): Promise<Result<VerifyResult[]>> => {
   // send this to verifier
   const list_bytes = compactList.serialize();
 
-  // Convert bytearray to base64 string
-  const base64List = btoa(
-    String.fromCharCode.apply(null, Array.from(list_bytes)),
-  );
+  // Convert bytearray to hex string
+  const packed_list = toHexString(list_bytes);
 
   const sz_byte = new Uint8Array([securityZone]);
 
   // Construct request payload
   const payload = {
-    packed_list: base64List,
+    packed_list,
     account_addr: address,
     security_zone: sz_byte[0],
+    chain_id: parseInt(chainId),
   };
 
   const body = JSON.stringify(payload);
@@ -183,7 +182,7 @@ export const zkVerify = async (
         json.data.map(({ ct_hash, signature, recid }) => {
           return {
             ct_hash,
-            signature: signature + (recid + 27).toString(16).padStart(2, "0"),
+            signature: concatSigRecid(signature, recid),
           };
         }),
       );
