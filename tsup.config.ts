@@ -19,4 +19,13 @@ export default defineConfig({
     };
   },
   outDir: "dist",
+  treeshake: true,
+  minify: false,
+  outExtension({ format }) {
+    return {
+      js: format === "cjs" ? ".js" : ".mjs",
+    };
+  },
+  legacyOutput: false,
+  noExternal: [],
 });
