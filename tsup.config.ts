@@ -1,7 +1,10 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: {
+    web: "./src/web/index.ts",
+    node: "./src/node/index.ts",
+  },
   format: ["cjs", "esm"],
   dts: true,
   splitting: false,
@@ -15,4 +18,5 @@ export default defineConfig({
       ".wasm": "file",
     };
   },
+  outDir: "dist",
 });

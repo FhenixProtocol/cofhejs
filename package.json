@@ -2,14 +2,16 @@
   "name": "cofhejs",
   "version": "0.0.1-alpha.11",
   "description": "The JavaScript SDK for Fhenix's CoFHE Service",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+    "./web": {
+      "types": "./dist/web.d.ts",
+      "import": "./dist/web.mjs",
+      "require": "./dist/web.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.mjs",
+      "require": "./dist/node.js"
     }
   },
   "engines": {
@@ -86,5 +88,20 @@
     "vite-plugin-wasm": "3.3.0",
     "vitest": "1.6.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "tsup": {
+    "entry": {
+      "web": "./src/web/index.ts",
+      "node": "./src/node/index.ts"
+    },
+    "format": [
+      "cjs",
+      "esm"
+    ],
+    "dts": true,
+    "splitting": false,
+    "sourcemap": true,
+    "clean": true,
+    "outDir": "dist"
+  }
 }
