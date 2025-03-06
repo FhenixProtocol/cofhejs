@@ -9,13 +9,19 @@ export function constructZkPoKMetadata(
     : accountAddr;
   const accountBytes = hexToBytes(accountAddrNoPrefix);
 
-  const chainIdBytes = new Uint8Array(4);
-  chainIdBytes[0] = (chainId >> 24) & 0xff;
-  chainIdBytes[1] = (chainId >> 16) & 0xff;
-  chainIdBytes[2] = (chainId >> 8) & 0xff;
-  chainIdBytes[3] = chainId & 0xff;
+  // Encode chainId as 32 bytes (u256) in big-endian format
+  const chainIdBytes = new Uint8Array(32);
 
-  const metadata = new Uint8Array(1 + accountBytes.length + 4);
+  // Since chain IDs are typically small numbers, we can just encode them
+  // directly without BigInt operations, filling only the necessary bytes
+  // from the right (least significant)
+  let value = chainId;
+  for (let i = 31; i >= 0 && value > 0; i--) {
+    chainIdBytes[i] = value & 0xff;
+    value = value >>> 8;
+  }
+
+  const metadata = new Uint8Array(1 + accountBytes.length + 32);
   metadata[0] = securityZone;
   metadata.set(accountBytes, 1);
   metadata.set(chainIdBytes, 1 + accountBytes.length);
