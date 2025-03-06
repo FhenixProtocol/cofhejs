@@ -16,14 +16,14 @@ services:
       - "42100:3000"
 
   fheos_server:
-    image: ghcr.io/fhenixprotocol/cofhe/fheos:v0.0.6
+    image: ghcr.io/fhenixprotocol/cofhe/fheos:v0.0.8
     network_mode: "host"
     depends_on:
       - registry_chain
       - host_chain
 
   middleware:
-    image: ghcr.io/fhenixprotocol/cofhe/middleware:v0.0.5
+    image: ghcr.io/fhenixprotocol/cofhe/middleware:v0.0.6
     network_mode: "host"
     depends_on:
       - host_chain

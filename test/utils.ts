@@ -29,8 +29,8 @@ export async function waitForZkVerifierToStart(url: string) {
   // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
-      console.log(`connecting to ${url}/GetNetworkPublickKey`);
-      await fetch(`${url}/GetNetworkPublickKey`, {
+      console.log(`connecting to ${url}/GetNetworkPublicKey`);
+      await fetch(`${url}/GetNetworkPublicKey`, {
         method: "POST",
       });
       console.log(`connected!`);

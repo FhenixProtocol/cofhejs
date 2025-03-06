@@ -134,3 +134,7 @@ bundle/
 .idea/
 /dist
 /lib
+
+# docker
+config/
+keys/

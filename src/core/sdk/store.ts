@@ -9,6 +9,8 @@ import {
   AbstractSigner,
   InitializationParams,
 } from "../../types";
+import path from "path";
+import fs from "fs";
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -203,49 +205,59 @@ export const _store_fetchKeys = async (
   let pk_data: string | undefined = undefined;
   let crs_data: string | undefined = undefined;
 
-  // Fetch publicKey from CoFhe
-  try {
-    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublickKey`, {
-      method: "POST",
-    });
-    pk_data = (await pk_res.json()).public_key;
+  const LOCAL_KEYS = true;
 
-    const crs_res = await fetch(`${coFheUrl}/crs`, {
-      method: "POST",
-    });
-    crs_data = (await crs_res.json()).crs;
-  } catch (err) {
-    throw new Error(
-      `Error initializing cofhejs; fetching FHE publicKey and CRS from CoFHE failed with error ${err}`,
-    );
+  let pk_buff: Uint8Array | undefined = undefined;
+  let crs_buff: Uint8Array | undefined = undefined;
+
+  if (LOCAL_KEYS) {
+    pk_buff = fs.readFileSync(path.join(__dirname, "../../../keys/pks"));
+    crs_buff = fs.readFileSync(path.join(__dirname, "../../../keys/crs"));
+  } else {
+    // Fetch publicKey from CoFhe
+    try {
+      const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
+        method: "POST",
+      });
+      pk_data = (await pk_res.json()).public_key;
+
+      const crs_res = await fetch(`${coFheUrl}/crs`, {
+        method: "POST",
+      });
+      crs_data = (await crs_res.json()).crs;
+    } catch (err) {
+      throw new Error(
+        `Error initializing cofhejs; fetching FHE publicKey and CRS from CoFHE failed with error ${err}`,
+      );
+    }
+
+    if (pk_data == null || typeof pk_data !== "string") {
+      throw new Error(
+        `Error initializing cofhejs; FHE publicKey fetched from CoFHE invalid: missing or not a string`,
+      );
+    }
+
+    if (pk_data === "0x") {
+      throw new Error(
+        "Error initializing cofhejs; provided chain is not FHE enabled, no FHE publicKey found",
+      );
+    }
+
+    if (pk_data.length < PUBLIC_KEY_LENGTH_MIN) {
+      throw new Error(
+        `Error initializing cofhejs; got shorter than expected FHE publicKey: ${pk_data.length}. Expected length >= ${PUBLIC_KEY_LENGTH_MIN}`,
+      );
+    }
+
+    if (crs_data == null || typeof crs_data !== "string") {
+      throw new Error(
+        `Error initializing cofhejs; CRS fetched from CoFHE invalid: missing or not a string`,
+      );
+    }
+
+    pk_buff = fromHexString(pk_data);
+    crs_buff = fromHexString(crs_data);
   }
-
-  if (pk_data == null || typeof pk_data !== "string") {
-    throw new Error(
-      `Error initializing cofhejs; FHE publicKey fetched from CoFHE invalid: missing or not a string`,
-    );
-  }
-
-  if (pk_data === "0x") {
-    throw new Error(
-      "Error initializing cofhejs; provided chain is not FHE enabled, no FHE publicKey found",
-    );
-  }
-
-  if (pk_data.length < PUBLIC_KEY_LENGTH_MIN) {
-    throw new Error(
-      `Error initializing cofhejs; got shorter than expected FHE publicKey: ${pk_data.length}. Expected length >= ${PUBLIC_KEY_LENGTH_MIN}`,
-    );
-  }
-
-  if (crs_data == null || typeof crs_data !== "string") {
-    throw new Error(
-      `Error initializing cofhejs; CRS fetched from CoFHE invalid: missing or not a string`,
-    );
-  }
-
-  const pk_buff = fromHexString(pk_data);
-  const crs_buff = fromHexString(crs_data);
 
   try {
     tfheCompactPublicKeySerializer(pk_buff);

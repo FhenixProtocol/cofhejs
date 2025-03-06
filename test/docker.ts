@@ -13,12 +13,14 @@ export const ZK_VERIFIER_CONTAINER_NAME = "cofhejs-test-zk-verifier";
 
 // Function to run a Docker container using the 'execPromise' function
 export async function runZkVerifierContainer() {
-  const image = "ghcr.io/fhenixprotocol/zk-verifier:alpha-no-fheos ";
+  const image = "ghcr.io/fhenixprotocol/zk-verifier:v0.1.0-alpha.7";
   const ports = "-p 3000:3000";
+  const keys = "-v ./keys:/app/keys";
+  const config = "-v ./config:/app/config";
 
   const remove = `docker kill ${ZK_VERIFIER_CONTAINER_NAME}`;
 
-  const command = `docker run --rm --name ${ZK_VERIFIER_CONTAINER_NAME} --env RUST_LOG=trace ${ports} -d ${image}`;
+  const command = `docker run --rm --name ${ZK_VERIFIER_CONTAINER_NAME} --env RUST_LOG=trace  ${config} ${keys} ${ports} -d ${image}`;
 
   try {
     try {
