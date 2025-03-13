@@ -1,6 +1,39 @@
+name: localcofhenix
 version: "3.8"
 
+# Define a template for party member services
+x-party-member-template: &party-member-template
+  build: .
+  image: ghcr.io/fhenixprotocol/threshold-network:testing-workflow-dispatch
+  network_mode: "host"
+  command: partymember-service
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+    preprocessor:
+      condition: service_completed_successfully
+  volumes:
+    - ./docker/:/app/
+    - ${KEYS_PATH:-./keys}:/app/test_data
+    - ${CONFIG_DIR:-./configs}:/app/configs
+
 services:
+  preprocessor:
+    image: preprocessor
+    container_name: preprocessor
+    command: >
+      sh -c "
+        target/release/preprocessor --runtime-config test &&
+        mkdir -p /app/docker/test_data/0 &&
+        cp /app/docker/test_data/crs /app/docker/test_data/0/decryption_key &&
+        cp /app/docker/test_data/public_key /app/docker/test_data/0/ &&
+        cp /app/docker/test_data/computation_key /app/docker/test_data/0 &&
+        echo 'TODO : FIX THE MAPPING OF THE KEYS' &&
+        echo 'Preprocessor done, keys copied to security zone 0 folder.'
+      "
+    volumes:
+      - ${KEYS_PATH:-./keys}:/app/docker/test_data:rw
+
   host_chain:
     image: ghcr.io/fhenixprotocol/nitro/localfhenix:v0.3.2-alpha.17
     ports:
@@ -16,16 +49,102 @@ services:
       - "42100:3000"
 
   fheos_server:
-    image: ghcr.io/fhenixprotocol/cofhe/fheos:v0.0.6
+    image: ghcr.io/fhenixprotocol/cofhe/fheos:v0.0.9
     network_mode: "host"
+    environment:
+      - FHEOS_ORACLE_TYPE=network # "local" or "network", to use local decryptions or threshold network decryptions
+    volumes:
+      - ${KEYS_PATH:-./keys}:/home/user/keys:rw # fheos is recreating the keys files as part of the loading process for god sake reason, so it must have write access otherwise it's silently failing
     depends_on:
-      - registry_chain
-      - host_chain
+      registry_chain:
+        condition: service_started
+      host_chain:
+        condition: service_started
+      preprocessor:
+        condition: service_completed_successfully
 
   middleware:
-    image: ghcr.io/fhenixprotocol/cofhe/middleware:v0.0.5
+    image: ghcr.io/fhenixprotocol/cofhe/middleware:v0.0.8
     network_mode: "host"
     depends_on:
       - host_chain
       - registry_chain
       - fheos_server
+
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq
+    network_mode: "host"
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  coordinator:
+    build: .
+    image: ghcr.io/fhenixprotocol/threshold-network:testing-workflow-dispatch
+    container_name: coordinator
+    network_mode: "host"
+    command: /usr/local/bin/coordinator-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./docker/:/app/
+      - ${COORDINATOR_DISPATCHER_CONFIG_FILE:-./config.toml}:/app/config.toml
+
+  dispatcher:
+    build: .
+    image: ghcr.io/fhenixprotocol/threshold-network:testing-workflow-dispatch
+    container_name: dispatcher
+    network_mode: "host"
+    ports:
+      - "3000:3000"
+      - "50054:50054"
+    command: /usr/local/bin/dispatcher-service
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./docker/:/app/
+      - ${COORDINATOR_DISPATCHER_CONFIG_FILE:-./config.toml}:/app/config.toml
+
+  # Party member services using the template
+  party-member-0:
+    <<: *party-member-template
+    container_name: party-member-0
+    environment:
+      - CONFIG_PATH=/app/configs/test_config_00.toml
+
+  party-member-1:
+    <<: *party-member-template
+    container_name: party-member-1
+    environment:
+      - CONFIG_PATH=/app/configs/test_config_01.toml
+
+  party-member-2:
+    <<: *party-member-template
+    container_name: party-member-2
+    environment:
+      - CONFIG_PATH=/app/configs/test_config_02.toml
+
+  party-member-3:
+    <<: *party-member-template
+    container_name: party-member-3
+    environment:
+      - CONFIG_PATH=/app/configs/test_config_03.toml
+
+  zk-verifier:
+    image: ghcr.io/fhenixprotocol/zk-verifier:v0.1.0-alpha.9
+    ports:
+      - "3001:3000"
+    environment:
+      - RUST_LOG=trace
+    volumes:
+      - ${ZKV_CONFIG_FOLDER_PATH:-./config}:/app/config
+      - ${KEYS_PATH:-./keys}:/app/keys
