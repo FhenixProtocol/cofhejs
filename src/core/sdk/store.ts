@@ -220,7 +220,7 @@ export const _store_fetchKeys = async (
     });
     pk_data = (await pk_res.json()).public_key;
 
-    const crs_res = await fetch(`${coFheUrl}/crs`, {
+    const crs_res = await fetch(`${coFheUrl}/GetCrs`, {
       method: "POST",
     });
     crs_data = (await crs_res.json()).crs;
