@@ -27,6 +27,7 @@ import {
 } from "../types";
 import { initTfhe } from "./init";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
+import { mockEncrypt } from "../core/sdk/testnet";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -68,6 +69,11 @@ async function encrypt<T extends any[]>(
   item: [...T],
   securityZone = 0,
 ): Promise<Result<[...Encrypted_Inputs<T>]>> {
+  const state = _sdkStore.getState();
+  if (state.isTestnet) {
+    return mockEncrypt(setState, item, securityZone);
+  }
+
   setState(EncryptStep.Extract);
 
   const keysResult = encryptGetKeys();

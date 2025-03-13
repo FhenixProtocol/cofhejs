@@ -69,11 +69,15 @@ const _checkInitialized = (
     coFheUrl?: boolean;
   },
 ) => {
-  if (options?.fheKeys !== false && !state.fheKeysInitialized) {
+  if (
+    !state.isTestnet &&
+    options?.fheKeys !== false &&
+    !state.fheKeysInitialized
+  ) {
     return ResultErr("cofhejs not initialized. Use `cofhejs.initialize(...)`.");
   }
 
-  if (options?.coFheUrl !== false && !state.coFheUrl)
+  if (!state.isTestnet && options?.coFheUrl !== false && !state.coFheUrl)
     return ResultErr(
       "cofhejs not initialized with a coFheUrl. Set `coFheUrl` in `cofhejs.initialize`.",
     );

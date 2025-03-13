@@ -26,6 +26,8 @@ import {
   Result,
   ResultErr,
   ResultOk,
+  VerifyResult,
+  VerifyResultRaw,
 } from "../types";
 import { concatSigRecid, constructZkPoKMetadata } from "../core/utils/zkPoK";
 
@@ -115,17 +117,6 @@ export const zkProve = async (
       resolve(compactList);
     }, 0);
   });
-};
-
-type VerifyResultRaw = {
-  ct_hash: string;
-  signature: string;
-  recid: number;
-};
-
-type VerifyResult = {
-  ct_hash: string;
-  signature: string;
 };
 
 export const zkVerify = async (

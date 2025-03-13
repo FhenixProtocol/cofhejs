@@ -237,3 +237,8 @@ export const bigintToUint8Array = (bigNum: bigint): Uint8Array => {
 
   return byteArray;
 };
+
+// General tooling
+
+export const sleep = async (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));

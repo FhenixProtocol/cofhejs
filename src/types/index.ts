@@ -6,3 +6,4 @@ export * from "./sealed";
 export * from "./base";
 export * from "./sdk";
 export * from "./EIP712";
+export * from "./zkPok";

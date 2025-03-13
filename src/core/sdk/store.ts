@@ -2,13 +2,13 @@
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
 import { fromHexString } from "../utils/utils";
-import { chainIsHardhat } from "../utils/hardhat";
 import { PUBLIC_KEY_LENGTH_MIN } from "./consts";
 import {
   AbstractProvider,
   AbstractSigner,
   InitializationParams,
 } from "../../types";
+import { checkIsTestnet } from "./testnet";
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -41,6 +41,7 @@ export type SdkStore = SdkStoreProviderInitialization &
   SdkStoreSignerInitialization & {
     provider: AbstractProvider;
     chainId: string;
+    isTestnet: boolean;
 
     fheKeysInitialized: boolean;
 
@@ -65,6 +66,7 @@ export const _sdkStore = createStore<SdkStore>(
       providerInitialized: false,
       provider: undefined as never,
       chainId: undefined as never,
+      isTestnet: false,
 
       signerInitialized: false,
       signer: undefined as never,
@@ -73,6 +75,10 @@ export const _sdkStore = createStore<SdkStore>(
 );
 
 // Store getters / setters
+
+export const _store_isTestnet = () => {
+  return _sdkStore.getState().isTestnet;
+};
 
 const _store_getFheKey = (chainId: string | undefined, securityZone = 0) => {
   if (chainId == null || securityZone == null) return undefined;
@@ -112,7 +118,7 @@ export const _store_initialize = async (params: InitializationParams) => {
     signer,
     securityZones = [0],
     coFheUrl = undefined,
-    tfhePublicKeySerializer: tfheCompactPublicKeySerializer,
+    tfhePublicKeySerializer,
     compactPkeCrsSerializer,
   } = params;
 
@@ -131,6 +137,10 @@ export const _store_initialize = async (params: InitializationParams) => {
   if (chainId != null && provider != null) {
     _sdkStore.setState({ providerInitialized: true, provider, chainId });
   }
+
+  // IS TESTNET
+  const isTestnet = await checkIsTestnet(provider);
+  _sdkStore.setState({ isTestnet });
 
   // SIGNER
 
@@ -159,13 +169,13 @@ export const _store_initialize = async (params: InitializationParams) => {
   }
 
   // Fetch FHE keys (skipped if hardhat)
-  if (!chainIsHardhat(chainId) && !_sdkStore.getState().fheKeysInitialized) {
+  if (!isTestnet && !_sdkStore.getState().fheKeysInitialized) {
     await Promise.all(
       securityZones.map((securityZone) =>
         _store_fetchKeys(
           chainId,
           securityZone,
-          tfheCompactPublicKeySerializer,
+          tfhePublicKeySerializer,
           compactPkeCrsSerializer,
           true,
         ),
@@ -186,7 +196,7 @@ export const _store_initialize = async (params: InitializationParams) => {
 export const _store_fetchKeys = async (
   chainId: string,
   securityZone: number = 0,
-  tfheCompactPublicKeySerializer: (buff: Uint8Array) => void,
+  tfhePublicKeySerializer: (buff: Uint8Array) => void,
   compactPkeCrsSerializer: (buff: Uint8Array) => void,
   forceFetch = false,
 ) => {
@@ -205,7 +215,7 @@ export const _store_fetchKeys = async (
 
   // Fetch publicKey from CoFhe
   try {
-    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublickKey`, {
+    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
       method: "POST",
     });
     pk_data = (await pk_res.json()).public_key;
@@ -248,7 +258,7 @@ export const _store_fetchKeys = async (
   const crs_buff = fromHexString(crs_data);
 
   try {
-    tfheCompactPublicKeySerializer(pk_buff);
+    tfhePublicKeySerializer(pk_buff);
   } catch (err) {
     throw new Error(`Error serializing public key ${err}`);
   }
