@@ -1,0 +1,8 @@
+party_member_id = 2
+worker_count = 4
+port = 1339
+coordinator_endpoint = "localhost:50050"
+
+[retry_config]
+max_retries = 5
+retry_delay_ms = 2000

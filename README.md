@@ -55,7 +55,7 @@ You can install as a module:
 Or from a UMD:
 
 ```
-<script id="fhenixjs" src="./dist/fhenix.umd.min.js"></script>
+<script id="cofhejs" src="./dist/fhenix.umd.min.js"></script>
 ```
 
 #### NextJS WASM Bundling
@@ -121,161 +121,264 @@ Completely untested. Maybe yes, maybe no, maybe both.
 
 NOTE: `cofhejs` is still in beta, and while we will try to avoid it, we may release breaking changes in the future if necessary.
 
-The sdk can be imported by:
+### Environment-specific Imports
+
+cofhejs offers environment-specific entry points to ensure optimal compatibility across different platforms:
+
+#### Browser Environments
+
+For web applications, use the browser-specific entry point:
+
 ```typescript
-import { cofhejs } from "fhenix.js"
+import { cofhejs } from "cofhejs/web";
 ```
 
-Before interacting with your users' permits, you must first initialize the sdk:
+This entry point is optimized for browser environments and handles WASM loading properly in frontend frameworks like React, Vue, or vanilla JavaScript applications.
+
+#### Node.js Environments
+
+For Node.js applications, serverless functions, or test environments like Hardhat scripts:
+
 ```typescript
+import { cofhejs } from "cofhejs/node";
+```
+
+This entry point is optimized for Node.js environments and ensures proper WASM loading without browser-specific dependencies.
+
+### Initialization
+
+Before interacting with your users' permits and encrypted data, initialize the sdk:
+
+```typescript
+// Basic initialization with provider and signer
 await cofhejs.initialize({
   provider: userProvider,   // Implementation of AbstractAccount in `types.ts`
   signer: userSigner,       // Implementation of AbstractSigner in `types.ts`
 })
 ```
 
-NOTE: When the user changes, it is recommended to re-initialize the sdk with the updated `provider` and `signer`
+See 
 
+#### Re-initialization on User Change
 
-then, to create a new Permit, simply:
+When the user changes (e.g., wallet switch), re-initialize the sdk with the updated credentials:
+
 ```typescript
-await cofhejs.createPermit({
-  type: "self",
-  issuer: userAddress,
-})
-
-// Alternatively, you can create a permit with the default options:
-// type: "self"
-// issuer: address of signer passed into `cofhejs.initialize`
-await cofhejs.createPermit()
-```
-
-### Permissions
-Now that the user has an active permit, we can extract the relevant `Permission` data from that permit:
-```typescript
-const permit = cofhejs.getPermit()
-const permission = permit.getPermission()
-```
-
-which can then be used as an argument for a solidity function:
-```solidity
-function getCounterPermitSealed(
-  Permission memory permission
-) public view withPermission(permission) returns (SealedUint memory) {
-  return FHE.sealoutputTyped(userCounter[permission.issuer], permission.sealingKey);
-}
-```
-NOTE: We will return to this `SealedUint` output struct in the "Output data" section below.
-
-You can read more about how Permits enable Fhenix to privately fetch encrypted data from on-chain by taking a look at our [docs](https://docs.fhenix.zone/docs/devdocs/FhenixJS/Permits) or the [`Permissioned.sol` contract](https://github.com/FhenixProtocol/fhenix-contracts/blob/main/contracts/access/Permissioned.sol).
-
-
-### Input data
-Passing data to the contracts involves an additional step where the user's encryptable variables are encrypted. FHE enabled contracts require private data to be passed in as `EncryptedUintXX` (or the other variants), which requires pre-encryption using the FHE enabled network's publicKey. 
-
-For a solidity function:
-```solidity
-function add(inEuint32 calldata encryptedValue) public {
-  euint32 value = FHE.asEuint32(encryptedValue);
-  userCounter[msg.sender] = userCounter[msg.sender] + value;
-}
-```
-
-We need to pass an encrypted value into `inEuint32`. Using `cofhejs` this is accomplished by:
-```typescript
-const encryptableValue = Encryptable.uint32(5);
-const encryptedArgs = client.encrypt(encryptableValue)
-//    ^? encryptedArgs - [EncryptedUint32]
-```
-
-These args can now be sent to the contract. `.encrypt` will also replace `"permission"` with the user's currently active permit `permission` referenced above. It will also recursively encrypt any nested input data (`[...]` / `{...}`):
-```typescript
-const encrypted = client.encrypt(
-  "permission", // <== Will be replaced by the user's active `Permit.getPermission()`
-  Encryptable.uint8(5),
-  [Encryptable.uint128("50"), Encryptable.bool(true)],
-  50n,
-  "hello"
-)
-// typeof encrypted - [Permission, EncryptedUint8, [EncryptedUint128, EncryptedBool], bigint, string]
-```
-
-### Output data (sealed)
-Encrypted data is sealed before it is returned to the users, at which point it can be unsealed on the client. By using the structs `SealedUint` / `SealedBool` / `SealedAddress` provided in `FHE.sol`, the sealed output variables can be automatically decrypted into the correct type using `cofhejs.unseal`.
-
-A function with the following return type:
-```solidity
-function getSealedData(Permissioned memory permission) view returns (uint256, string memory, SealedUint memory, SealedUint memory, SealedBool memory);
-```
-
-can be unsealed with `cofhejs`:
-```typescript
-const data = await contract.getSealedData(permission);
-
-const unsealed = await client.unseal(data)
-//    ?^ - [bigint, string, bigint, bigint, bool]
-```
-
-As with `cofhejs.encrypt` above, `unseal` will also recursively unseal any nested data structures.
-
-### Notes
-
-- `cofhejs` uses `zustand` behind the scenes to persist your user's Permits. These zustand stores can be imported directly to be used as part of hooks. In the future we will also expose hooks to streamline interacting with the sdk in your react enabled dApps.
-- We plan to provide viem hooks inspired by `scaffold-eth`'s `useScaffoldContractRead` and `useScaffoldContractWrite` to automatically encrypt input data, inject permissions, and unseal output data.
-
-## `FhenixClient` and `FhenixClientSync`
-
-`FhenixClient` uses the legacy Permission system (V1), it is recommended to migrate to `cofhejs` and `Permit`s above.
-
-### Usage
-
-```javascript
-// initialize your web3 provider
-const provider = new JsonRpcProvider("http://localhost:8545");
-
-// initialize Fhenix Client
-const client = new FhenixClient({ provider });
-
-// to encrypt data for a Fhenix contract
-let encrypted = await client.encrypt(5, EncryptionTypes.uint8);
-// ... call contract with `encrypted`
-
-// to unseal data from a Fhenix contract
-const cleartext = client.unseal(contractAddress, sealed);
-```
-
-### Sync Fhenix Client
-
-If you need to use the `encrypt_xxxx()` functions of FhenixClient synchronously (ex: top level of a component / in a hook), then you may want to use `FhenixClientSync`.
-
-```javascript
-// Created using a static method instead of the `new` keyword
-const clientSync = await FhenixClientSync.create({ provider });
-
-// to encrypt data for a Fhenix contract (sync)
-let encrypted = clientSync.encrypt(5, EncryptionTypes.uint8);
-// ... call contract with `encrypted`
-```
-
-`FhenixClientSync` and `FhenixClient` share all functionality other than the async/sync `encrypt_xxxx()` functions.
-
-By default, `FhenixClientSync` is configured to only use the default security zone 0. If you need to interact with additional security zones, they can be initialized when creating the sync client as follows:
-
-```javascript
-const clientSync = await FhenixClientSync.create({
-  provider,
-  securityZones: [0, 1],
+// Listen for account changes in your wallet connector
+onAccountsChanged(async (accounts) => {
+  const newAddress = accounts[0];
+  // Get updated provider/signer for the new account
+  const newProvider = getUpdatedProvider(newAddress);
+  const newSigner = getUpdatedSigner(newAddress);
+  
+  // Re-initialize cofhejs with the new user
+  await cofhejs.initialize({
+    provider: newProvider,
+    signer: newSigner
+  });
 });
 ```
 
-### Permits & Access Control
+### Creating and Managing Permits
 
-We recommend the helper `Permit` structure, which is a built-in method for providing access control for your FHE-enabled view functions.
+Permits are a critical component for FHE interactions, allowing users to access their encrypted data:
 
-#### Credits
+```typescript
+// Create a permit with default options (self-permit for the current user)
+await cofhejs.createPermit()
 
-This project is based on [fhevmjs](https://github.com/zama-ai/fhevmjs) by Zama and utilizes [tfhe.rs](https://github.com/zama-ai/tfhe-rs) to provide FHE functionality
+// Create a permit with custom options
+await cofhejs.createPermit({
+  type: "self",             // "self" | "third-party" | "authorized"
+  issuer: userAddress,      // The address issuing this permit
+  expiration: 3600,         // Optional: Expiration time in seconds
+  allowedFunctions: [       // Optional: Restrict to specific functions
+    "getBalance",
+    "transfer"
+  ]
+})
 
-#### Need support?
+// Get the current active permit
+const permit = cofhejs.getPermit()
 
-Open an issue or Pull Request on Github! Or reach out to us on [Discord](https://discord.com/invite/FuVgxrvJMY) or Telegram.
+// Extract permission data for contract calls
+const permission = permit.getPermission()
+```
+
+### Encrypting Data for Contracts
+
+To interact with FHE-enabled contracts, plaintext values must be encrypted before sending:
+
+```typescript
+// Encrypting a single value
+const encryptedValue = cofhejs.encrypt(Encryptable.uint32(42))
+
+// Encrypting multiple values in a single call
+const encryptedArgs = cofhejs.encrypt([
+  Encryptable.uint8(5),
+  Encryptable.uint256("1000000000000000000"), // 1 ETH
+  Encryptable.bool(true)
+])
+
+// Complex data structures with automatic permission injection
+const encryptedData = cofhejs.encrypt({
+  permission: "permission", // Special string that gets replaced with the active permission
+  amount: Encryptable.uint128(1000),
+  recipients: [
+    {
+      address: "0x123...",
+      value: Encryptable.uint64(500)
+    },
+    {
+      address: "0x456...",
+      value: Encryptable.uint64(500)
+    }
+  ],
+  memo: "Payment split"     // Non-encrypted fields pass through unchanged
+})
+```
+
+#### Available Encryption Types
+
+cofhejs supports all FHE data types:
+
+```typescript
+// Integer types
+Encryptable.uint8(value)
+Encryptable.uint16(value)
+Encryptable.uint32(value)
+Encryptable.uint64(value)
+Encryptable.uint128(value)
+Encryptable.uint256(value)
+
+// Boolean type
+Encryptable.bool(value)
+
+// Address type (experimental)
+Encryptable.address(value)
+```
+
+### Handling Encrypted Outputs (Unsealing)
+
+When contracts return sealed encrypted data, use the `unseal` method to decrypt it:
+
+```typescript
+// Simple unsealing from a contract call
+const sealedBalance = await myContract.getEncryptedBalance(permission)
+const balance = await cofhejs.unseal(sealedBalance)
+// balance is now a plain JavaScript value
+
+// Unsealing multiple values from a structured response
+const response = await myContract.getMultipleValues(permission)
+const unsealed = await cofhejs.unseal(response)
+// unsealed will maintain the same structure as response, but with decrypted values
+```
+
+### Integration with Popular Web3 Libraries
+
+#### Using with ethers.js
+
+```typescript
+import { ethers } from "ethers";
+import { cofhejs } from "cofhejs/web";
+import MyContractABI from "./MyContract.json";
+
+// Setup
+const provider = new ethers.providers.Web3Provider(window.ethereum);
+const signer = provider.getSigner();
+const contract = new ethers.Contract(contractAddress, MyContractABI, signer);
+
+// Initialize cofhejs
+await cofhejs.initialize({ provider, signer });
+await cofhejs.createPermit();
+const permission = cofhejs.getPermit().getPermission();
+
+// Encrypt data and send transaction
+const encryptedAmount = cofhejs.encrypt(Encryptable.uint64(1000));
+const tx = await contract.deposit(permission, encryptedAmount);
+await tx.wait();
+
+// Retrieve and unseal data
+const sealedBalance = await contract.getBalance(permission);
+const balance = await cofhejs.unseal(sealedBalance);
+console.log("Balance:", balance);
+```
+
+#### Using with viem
+
+```typescript
+import { createWalletClient, custom, getContract } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { cofhejs } from "cofhejs/web";
+import { fhenixNetwork } from "cofhejs/chains";
+import MyContractABI from "./MyContract.json";
+
+// Setup
+const account = privateKeyToAccount("0x...");
+const client = createWalletClient({
+  account,
+  chain: fhenixNetwork,
+  transport: custom(window.ethereum)
+});
+
+const contract = getContract({
+  address: contractAddress,
+  abi: MyContractABI,
+  client
+});
+
+// Initialize cofhejs
+await cofhejs.initialize({ provider: client, signer: account });
+await cofhejs.createPermit();
+const permission = cofhejs.getPermit().getPermission();
+
+// Encrypt and send transaction
+const encryptedVote = cofhejs.encrypt(Encryptable.bool(true));
+await contract.write.castVote([permission, encryptedVote]);
+
+// Get and unseal results
+const sealedResults = await contract.read.getResults([permission]);
+const results = await cofhejs.unseal(sealedResults);
+console.log("Voting results:", results);
+```
+
+### Advanced Usage: Working with Raw Permits
+
+For applications requiring more fine-grained control:
+
+```typescript
+import { Permit } from "cofhejs/core";
+
+// Create a permit manually
+const permit = new Permit({
+  provider,
+  signer,
+  chainId: 42069
+});
+
+// Generate a new permit
+await permit.generate({
+  type: "third-party",
+  issuer: userAddress,
+  delegatee: receiverAddress,
+  expiration: 86400 // 24 hours
+});
+
+// Sign the permit
+await permit.sign();
+
+// Get permission for contract calls
+const permission = permit.getPermission();
+
+// Export permit for storage
+const serialized = permit.serialize();
+localStorage.setItem("savedPermit", serialized);
+
+// Import previously saved permit
+const savedPermit = localStorage.getItem("savedPermit");
+if (savedPermit) {
+  await permit.deserialize(savedPermit);
+}
+```
+
+For more advanced use cases and detailed API documentation, please refer to our [full documentation](https://fhenixjs.fhenix.zone).
