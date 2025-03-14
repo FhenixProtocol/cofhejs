@@ -27,14 +27,13 @@ export async function checkIsTestnet(
   // Check if testnet mock contracts are deployed by attempting to call them
   try {
     // Call with empty data to check if contracts exist
-    const data = existsSignature + "00000000";
     await provider.call({
       to: mockZkVerifierAddress,
-      data,
+      data: existsSignature,
     });
     await provider.call({
       to: mockQueryDecrypterAddress,
-      data,
+      data: existsSignature,
     });
 
     // If calls succeed, contracts exist
