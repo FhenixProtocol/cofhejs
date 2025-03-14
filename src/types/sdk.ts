@@ -10,6 +10,7 @@ export interface AbstractSigner {
     types: Record<string, Array<object>>,
     value: object,
   ): Promise<string>;
+  provider: AbstractProvider;
 }
 
 export type InitializationParams = {

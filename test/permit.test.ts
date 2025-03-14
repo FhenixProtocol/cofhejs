@@ -31,12 +31,12 @@ describe("Permit Tests", () => {
 
   beforeAll(async () => {
     bobPublicKey = await createTfhePublicKey();
-    bobProvider = new MockProvider(bobPublicKey, BobWallet);
+    bobProvider = new MockProvider(bobPublicKey, BobWallet, 420105);
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
 
     adaPublicKey = await createTfhePublicKey();
-    adaProvider = new MockProvider(adaPublicKey, AdaWallet);
+    adaProvider = new MockProvider(adaPublicKey, AdaWallet, 420105);
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();
   });

@@ -1,4 +1,3 @@
-import { ZeroAddress } from "ethers";
 import { EIP712Message, EIP712Types, Permission } from "../../types";
 
 const PermitSignatureAllFields = [
@@ -59,10 +58,3 @@ export const getSignatureTypesAndMessage = <
 
   return { types, primaryType, message: message as EIP712Message };
 };
-
-export const getSignatureDomain = (chainId: string) => ({
-  name: "Fhenix Permission 1.0.0",
-  version: "1.0.0",
-  chainId: parseInt(chainId),
-  verifyingContract: ZeroAddress,
-});

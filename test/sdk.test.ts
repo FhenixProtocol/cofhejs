@@ -41,7 +41,7 @@ describe("Sdk Tests", () => {
   const contractAddress2 = "0xB170fC5BAC4a87A63fC84653Ee7e0db65CC62f96";
   const counterProjectId = "COUNTER";
   const uniswapProjectId = "UNISWAP";
-  const coFheUrl = "http://127.0.0.1:3000";
+  const coFheUrl = "http://127.0.0.1";
 
   const initSdkWithBob = async () => {
     return cofhejs.initialize({
@@ -60,12 +60,12 @@ describe("Sdk Tests", () => {
 
   beforeAll(async () => {
     bobPublicKey = await createTfhePublicKey();
-    bobProvider = new MockProvider(bobPublicKey, BobWallet);
+    bobProvider = new MockProvider(bobPublicKey, BobWallet, 420105);
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
 
     adaPublicKey = await createTfhePublicKey();
-    adaProvider = new MockProvider(adaPublicKey, AdaWallet);
+    adaProvider = new MockProvider(adaPublicKey, AdaWallet, 420105);
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();
 

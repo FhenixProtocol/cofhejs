@@ -10,8 +10,6 @@ const mnemonics = [
   "chair love bleak wonder skirt permit say assist aunt credit roast size obtain minute throw sand usual age smart exact enough room shadow charge", // account c
 ];
 
-export const getNetworkPublicKeySig = "0x1b1b484e"; // cast sig "getNetworkPublicKey(int32)"
-
 export const BobWallet = ethers.Wallet.fromPhrase(mnemonics[1]);
 export const AdaWallet = ethers.Wallet.fromPhrase(mnemonics[2]);
 
@@ -43,22 +41,23 @@ export async function waitForZkVerifierToStart(url: string) {
 }
 
 export class MockSigner implements AbstractSigner {
-  wallet: ethers.HDNodeWallet;
+  provider: MockProvider;
 
-  constructor(wallet: ethers.HDNodeWallet) {
-    this.wallet = wallet;
+  constructor(provider: MockProvider) {
+    this.provider = provider;
   }
 
   signTypedData = async (domain: any, types: any, value: any): Promise<any> => {
-    return await this.wallet.signTypedData(domain, types, value);
+    return await this.provider.wallet.signTypedData(domain, types, value);
   };
 
   getAddress = async (): Promise<string> => {
-    return this.wallet.getAddress();
+    return this.provider.wallet.getAddress();
   };
 }
 
 export class MockProvider implements AbstractProvider {
+  provider: ethers.JsonRpcProvider;
   publicKey: any;
   wallet: ethers.HDNodeWallet;
   chainId: any;
@@ -67,6 +66,8 @@ export class MockProvider implements AbstractProvider {
     this.publicKey = pk;
     this.wallet = wallet ?? ethers.Wallet.fromPhrase(mnemonics[0]);
     this.chainId = chainId || "0x10";
+
+    this.provider = new ethers.JsonRpcProvider("http://localhost:42069");
   }
 
   async getChainId(): Promise<string> {
@@ -74,19 +75,7 @@ export class MockProvider implements AbstractProvider {
   }
 
   async call(tx: { to: string; data: string }): Promise<string> {
-    if (tx.data.startsWith(getNetworkPublicKeySig)) {
-      // Simulate an eth_call operation
-      if (typeof this.publicKey === "string") {
-        const abiCoder = new AbiCoder();
-        const buff = fromHexString(this.publicKey);
-        return abiCoder.encode(["bytes"], [buff]);
-      }
-      return this.publicKey;
-    }
-
-    throw new Error(
-      `MockProvider :: call :: not-implemented for fn: ${JSON.stringify(tx, undefined, 2)}`,
-    );
+    return await this.provider.call(tx);
   }
 
   async send(method: string, params: unknown[] | undefined): Promise<any> {
@@ -108,7 +97,7 @@ export class MockProvider implements AbstractProvider {
   }
 
   async getSigner(): Promise<MockSigner> {
-    return new MockSigner(this.wallet);
+    return new MockSigner(this);
   }
 }
 

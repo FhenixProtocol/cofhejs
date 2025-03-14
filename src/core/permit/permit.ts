@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { getAddress, id, keccak256, ZeroAddress } from "ethers";
+import { ethers, getAddress, id, keccak256, ZeroAddress } from "ethers";
 import {
-  getSignatureDomain,
   getSignatureTypesAndMessage,
   PermitSignaturePrimaryType,
   SignatureTypes,
@@ -19,9 +19,13 @@ import {
   isSealedAddress,
   isSealedUint,
   AbstractSigner,
+  AbstractProvider,
+  EIP712Domain,
 } from "../../types";
 import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils";
+import { ACLEip712DomainFnSig, TaskManagerAddress } from "./consts";
+import { TaskManagerAbiFnSig } from "./consts";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**
@@ -286,17 +290,64 @@ export class Permit implements PermitInterface, PermitMetadata {
    * Returns the domain, types, primaryType, and message fields required to request the user's signature
    * Primary type is returned to allow viem clients to more easily connect
    */
-  getSignatureParams = (
-    chainId: string,
-    primaryType: PermitSignaturePrimaryType,
-  ) => {
+  getSignatureParams = (primaryType: PermitSignaturePrimaryType) => {
+    return getSignatureTypesAndMessage(
+      primaryType,
+      SignatureTypes[primaryType],
+      this.getPermission(true),
+    );
+  };
+
+  /**
+   * Fetches the EIP712 domain for the given chainId.
+   * If the domain is not found, it will be fetched from the EIP712 domain registry.
+   *
+   * @param {string} chainId - The chainId to fetch the EIP712 domain for
+   * @param {AbstractProvider} provider - The provider to fetch the EIP712 domain from
+   * @returns {EIP712Domain} - The EIP712 domain for the given chainId
+   */
+  fetchEIP712Domain = async (
+    provider: AbstractProvider,
+  ): Promise<EIP712Domain> => {
+    const aclAddressRaw = await provider.call({
+      to: TaskManagerAddress,
+      data: TaskManagerAbiFnSig,
+    });
+    const [aclAddress] = ethers.AbiCoder.defaultAbiCoder().decode(
+      ["address"],
+      aclAddressRaw,
+    );
+
+    const aclEip712DomainRaw = await provider.call({
+      to: aclAddress,
+      data: ACLEip712DomainFnSig,
+    });
+    const [
+      _fields,
+      name,
+      version,
+      chainId,
+      verifyingContract,
+      _salt,
+      _extensions,
+    ] = ethers.AbiCoder.defaultAbiCoder().decode(
+      [
+        "bytes1",
+        "string",
+        "string",
+        "uint256",
+        "address",
+        "bytes32",
+        "uint256[]",
+      ],
+      aclEip712DomainRaw,
+    );
+
     return {
-      domain: getSignatureDomain(chainId),
-      ...getSignatureTypesAndMessage(
-        primaryType,
-        SignatureTypes[primaryType],
-        this.getPermission(true),
-      ),
+      name,
+      version,
+      chainId,
+      verifyingContract,
     };
   };
 
@@ -327,10 +378,10 @@ export class Permit implements PermitInterface, PermitMetadata {
     if (this.type === "sharing") primaryType = "PermissionedIssuerShared";
     if (this.type === "recipient") primaryType = "PermissionedRecipient";
 
-    const { domain, types, message } = this.getSignatureParams(
-      chainId,
-      primaryType,
-    );
+    const domain = await this.fetchEIP712Domain(signer.provider);
+
+    const { types, message } = this.getSignatureParams(primaryType);
+
     const signature = await signer.signTypedData(domain, types, message);
 
     if (this.type === "self" || this.type === "sharing") {
