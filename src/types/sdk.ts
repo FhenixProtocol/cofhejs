@@ -1,6 +1,8 @@
 export interface AbstractProvider {
-  getChainId(): Promise<string>;
+  getChainId?(): Promise<string>;
+  getNetwork?(): Promise<{ chainId: string | number } | string | number>;
   call(tx: { to: string; data: string }): Promise<string>;
+  request?(args: { method: string; params?: any[] }): Promise<any>;
 }
 
 export interface AbstractSigner {

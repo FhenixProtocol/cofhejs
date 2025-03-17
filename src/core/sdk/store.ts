@@ -99,16 +99,27 @@ export const _store_getCrs = (chainId: string | undefined) => {
   return _sdkStore.getState().crs[chainId];
 };
 
-const getChainIdFromProvider = async (
-  provider: AbstractProvider,
-): Promise<string> => {
-  const chainId = await provider.getChainId();
-  if (chainId == null)
-    throw new Error(
-      "sdk :: getChainIdFromProvider :: provider.getChainId returned a null result, ensure that your provider is connected to a network",
-    );
-  return chainId;
-};
+export async function getChainIdFromProvider(provider: AbstractProvider): Promise<string> {
+  if (provider.getChainId) {
+    return provider.getChainId();
+  } 
+  else if (provider.getNetwork) {
+    const network = await provider.getNetwork();
+    if (typeof network === 'string' || typeof network === 'number') {
+      return network.toString();
+    }
+    if (network && typeof network === 'object' && 'chainId' in network) {
+      return network.chainId.toString();
+    }
+  }
+  else if (provider.request) {
+    const chainId = await provider.request({ method: 'eth_chainId' });
+    return chainId;
+  }
+  
+  throw new Error('Provider does not support getChainId, getNetwork, or request methods');
+}
+
 
 // External functionality
 
