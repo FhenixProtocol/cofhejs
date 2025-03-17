@@ -214,8 +214,6 @@ export const _store_fetchKeys = async (
   let crs_data: string | undefined = undefined;
 
   // Fetch publicKey from CoFhe
-  console.log(JSON.stringify({ securityZone }));
-  console.log(`${coFheUrl}:8448/GetNetworkPublicKey`);
   try {
     const pk_res = await fetch(`${coFheUrl}:8448/GetNetworkPublicKey`, {
       method: "POST",

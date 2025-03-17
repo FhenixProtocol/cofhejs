@@ -7,7 +7,7 @@ import {
 } from "./docker";
 
 const TEST_ZK_VERIFIER_URL =
-  process.env.TEST_ZK_VERIFIER_URL ?? "http://localhost:3000";
+  process.env.TEST_ZK_VERIFIER_URL ?? "http://127.0.0.1:3001";
 
 export const setup = async () => {
   if (process.env.SKIP_LOCAL_ENV === "true") {
@@ -15,12 +15,12 @@ export const setup = async () => {
   }
 
   // await Promise.all([runZkVerifierContainer(), runCoFheContainers()]);
-  await runZkVerifierContainer();
+  // await runZkVerifierContainer();
 
   console.log("\nWaiting for zk verifier / CoFHE to start...");
 
   await Promise.all([
-    waitForZkVerifierToStart(TEST_ZK_VERIFIER_URL),
+    // waitForZkVerifierToStart(TEST_ZK_VERIFIER_URL),
     // waitForCoFheContainersToStart(),
   ]);
 
@@ -35,7 +35,7 @@ export const teardown = async () => {
   }
   console.log("\nWaiting for containers to stop...");
 
-  await Promise.all([killZkVerifierContainer(), stopCoFheContainers(true)]);
+  // await Promise.all([killZkVerifierContainer(), stopCoFheContainers(true)]);
 
   console.log("Stopped test container. Goodbye!");
 };
