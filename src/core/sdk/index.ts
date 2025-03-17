@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Permit, permitStore, PermitParamsValidator } from "../permit";
-import { isString } from "../utils/validation";
 import {
   _sdkStore,
   _store_getConnectedChainFheKey,
@@ -18,9 +17,11 @@ import {
   Result,
   ResultErr,
   ResultOk,
-  MappedUnsealedTypes,
   InitializationParams,
   EncryptableItem,
+  FheTypes,
+  UnsealedItem,
+  FheUintUTypes,
 } from "../../types";
 
 /**
@@ -400,66 +401,22 @@ export function encryptReplace<T>(item: T, encryptedItems: CoFheInItem[]) {
 // Unseal
 
 /**
- * Unseals an encrypted message using the stored permit for a specific contract address.
- * NOTE: Wrapper around `Permit.unseal`
- *
- * @param {string} ciphertext - The encrypted message to unseal.
- * @param {string} account - Users address, defaults to store.account
- * @param {string} hash - The hash of the permit to use for this operation, defaults to active permit hash
- * @returns bigint - The unsealed message.
- */
-export const unsealCiphertext = (
-  ciphertext: string,
-  account?: string,
-  hash?: string,
-): Result<bigint> => {
-  const state = _sdkStore.getState();
-
-  const initialized = _checkInitialized(state);
-  if (!initialized.success)
-    return ResultErr(`${getAllPermits.name} :: ${initialized.error}`);
-
-  isString(ciphertext);
-  const resolvedAccount = account ?? state.account;
-  const resolvedHash = hash ?? permitStore.getActivePermitHash(resolvedAccount);
-  if (resolvedAccount == null || resolvedHash == null) {
-    return ResultErr(
-      `unsealCiphertext :: Permit hash not provided and active Permit not found`,
-    );
-  }
-
-  const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
-  if (permit == null) {
-    return ResultErr(
-      `unsealCiphertext :: Permit with account <${account}> and hash <${hash}> not found`,
-    );
-  }
-
-  let unsealed: bigint;
-  try {
-    unsealed = permit.unsealCiphertext(ciphertext);
-  } catch (e) {
-    return ResultErr(`unsealCiphertext :: ${e}`);
-  }
-
-  return ResultOk(unsealed);
-};
-
-/**
  * Uses the privateKey of `permit.sealingPair` to recursively unseal any contained `SealedItems`.
  * If `item` is a single `SealedItem` it will be individually.
  * NOTE: Only unseals typed `SealedItem`s returned from `FHE.sealoutputTyped` and the FHE bindings' `e____.sealTyped`.
  *
- * @param {any | any[]} item - Array, object, or item. Any nested `SealedItems` will be unsealed.
+ * @param {any | any[]} ctHashes - Array, object, or item. Any nested `SealedItems` will be unsealed.
  * @returns - Recursively unsealed data in the target type, SealedBool -> boolean, SealedAddress -> string, etc.
  */
-export function unseal<T>(
-  item: T,
+export async function unseal<U extends FheTypes>(
+  ctHash: bigint,
+  utype: U,
   account?: string,
-  hash?: string,
-): Result<MappedUnsealedTypes<T>> {
+  permitHash?: string,
+): Promise<Result<UnsealedItem<U>>> {
   const resolvedAccount = account ?? _sdkStore.getState().account;
-  const resolvedHash = hash ?? permitStore.getActivePermitHash(resolvedAccount);
+  const resolvedHash =
+    permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
   if (resolvedAccount == null || resolvedHash == null) {
     return ResultErr(
       `unseal :: Permit hash not provided and active Permit not found`,
@@ -469,16 +426,38 @@ export function unseal<T>(
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
     return ResultErr(
-      `unseal :: Permit with account <${account}> and hash <${hash}> not found`,
+      `unseal :: Permit with account <${account}> and hash <${permitHash}> not found`,
     );
   }
 
-  let unsealed: MappedUnsealedTypes<T>;
+  const coFheUrl = _sdkStore.getState().coFheUrl;
+  if (coFheUrl == null) return ResultErr("unseal :: coFheUrl not initialized");
+
+  let sealed: string | undefined;
   try {
-    unsealed = permit.unseal(item);
+    const sealOutputRes = await fetch(`${coFheUrl}:8448/sealOutput`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ctHash,
+        permission: permit.getPermission(),
+      }),
+    });
+    const sealOutput = await sealOutputRes.json();
+    sealed = BigInt(sealOutput.data).toString();
   } catch (e) {
-    return ResultErr(`unseal :: ${e}`);
+    return ResultErr(`unseal :: sealOutput request failed :: ${e}`);
   }
 
-  return ResultOk(unsealed);
+  if (utype === FheTypes.Bool) {
+    return ResultOk(permit.unsealCiphertext(sealed)) as Result<UnsealedItem<U>>;
+  } else if (utype === FheTypes.Uint160) {
+    return ResultOk(permit.unsealCiphertext(sealed)) as Result<UnsealedItem<U>>;
+  } else if (utype == null || FheUintUTypes.includes(utype as number)) {
+    return ResultOk(permit.unsealCiphertext(sealed)) as Result<UnsealedItem<U>>;
+  } else {
+    return ResultErr(`unseal :: invalid utype :: ${utype}`);
+  }
 }

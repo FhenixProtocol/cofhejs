@@ -214,19 +214,35 @@ export const _store_fetchKeys = async (
   let crs_data: string | undefined = undefined;
 
   // Fetch publicKey from CoFhe
+  console.log(JSON.stringify({ securityZone }));
+  console.log(`${coFheUrl}:8448/GetNetworkPublicKey`);
   try {
-    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
+    const pk_res = await fetch(`${coFheUrl}:8448/GetNetworkPublicKey`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ securityZone }),
     });
-    pk_data = (await pk_res.json()).public_key;
+    pk_data = (await pk_res.json()).publicKey;
+  } catch (err) {
+    throw new Error(
+      `Error initializing cofhejs; fetching FHE publicKey from CoFHE failed with error ${err}`,
+    );
+  }
 
-    const crs_res = await fetch(`${coFheUrl}/GetCrs`, {
+  try {
+    const crs_res = await fetch(`${coFheUrl}:8448/GetCrs`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ securityZone }),
     });
     crs_data = (await crs_res.json()).crs;
   } catch (err) {
     throw new Error(
-      `Error initializing cofhejs; fetching FHE publicKey and CRS from CoFHE failed with error ${err}`,
+      `Error initializing cofhejs; fetching CRS from CoFHE failed with error ${err}`,
     );
   }
 

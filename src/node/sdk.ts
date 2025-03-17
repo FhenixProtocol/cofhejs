@@ -12,7 +12,6 @@ import {
   initializeCore,
   selectActivePermit,
   unseal,
-  unsealCiphertext,
 } from "../core/sdk";
 import { Permit } from "../core/permit";
 import { _sdkStore } from "../core/sdk/store";
@@ -27,6 +26,7 @@ import {
 } from "../types";
 import { initTfhe } from "./init";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
+import CRS from "../../crs.json";
 import { mockEncrypt } from "../core/sdk/testnet";
 
 /**
@@ -53,14 +53,20 @@ export const initialize = async (
       );
     }
   });
+  try {
+    CompactPkeCrs.deserialize(new Uint8Array(Buffer.from(CRS.crs, "hex")));
+  } catch (err) {
+    console.log("Error deserializing CompactPkeCrs", err);
+  }
 
   return initializeCore({
     ...params,
     tfhePublicKeySerializer: (buff: Uint8Array) => {
       return TfheCompactPublicKey.deserialize(buff);
     },
-    compactPkeCrsSerializer: (buff: Uint8Array) =>
-      CompactPkeCrs.deserialize(buff),
+    compactPkeCrsSerializer: (buff: Uint8Array) => {
+      return CompactPkeCrs.deserialize(buff);
+    },
   });
 };
 
@@ -151,6 +157,5 @@ export const cofhejs = {
 
   encrypt,
 
-  unsealCiphertext,
   unseal,
 };
