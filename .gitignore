@@ -134,3 +134,4 @@ bundle/
 .idea/
 /dist
 /lib
+/test/docker/keys

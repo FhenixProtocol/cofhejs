@@ -1,21 +1,35 @@
 name: localcofhenix
 version: "3.8"
 
+volumes:
+  keys:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${KEYS_PATH:-./localcofhenix/keys}
+      o: bind
+  configs:
+    driver: local
+    driver_opts:
+      type: none
+      device: ${CONFIG_DIR:-./localcofhenix/configs}
+      o: bind
+
 # Define a template for party member services
 x-party-member-template: &party-member-template
   build: .
   image: ghcr.io/fhenixprotocol/threshold-network
   network_mode: "host"
+  restart: unless-stopped
   command: partymember-service
   depends_on:
-    rabbitmq:
-      condition: service_healthy
     preprocessor:
       condition: service_completed_successfully
+    coordinator:
+      condition: service_started
   volumes:
-    - ./docker/:/app/
-    - ${KEYS_PATH:-./keys}:/app/test_data
-    - ${CONFIG_DIR:-./configs}:/app/configs
+    - keys:/app/test_data:rw
+    - configs:/app/configs
 
 services:
   preprocessor:
@@ -31,7 +45,7 @@ services:
         echo 'Preprocessor done, keys copied to security zone 0 folder.'
       "
     volumes:
-      - ${KEYS_PATH:-./keys}:/app/docker/test_data:rw
+      - keys:/app/docker/test_data:rw
 
   host_chain:
     image: ghcr.io/fhenixprotocol/nitro/localfhenix:v0.3.2-alpha.17
@@ -48,12 +62,15 @@ services:
       - "42100:3000"
 
   fheos_server:
-    image: ghcr.io/fhenixprotocol/cofhe/fheos:v0.0.9
+    image: ghcr.io/fhenixprotocol/cofhe/fheos
     network_mode: "host"
+    ports:
+      - "8448:8448" # External API
+      - "8449:8449" # Internal API
     environment:
       - FHEOS_ORACLE_TYPE=network # "local" or "network", to use local decryptions or threshold network decryptions
     volumes:
-      - ${KEYS_PATH:-./keys}:/home/user/keys:rw # fheos is recreating the keys files as part of the loading process for god sake reason, so it must have write access otherwise it's silently failing
+      - keys:/home/user/keys:rw # fheos is recreating the keys files as part of the loading process for god sake reason, so it must have write access otherwise it's silently failing
     depends_on:
       registry_chain:
         condition: service_started
@@ -63,7 +80,7 @@ services:
         condition: service_completed_successfully
 
   middleware:
-    image: ghcr.io/fhenixprotocol/cofhe/middleware:v0.0.8-beta
+    image: ghcr.io/fhenixprotocol/cofhe/middleware
     network_mode: "host"
     depends_on:
       - host_chain
@@ -75,8 +92,8 @@ services:
     container_name: rabbitmq
     network_mode: "host"
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI port
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 5s
@@ -89,13 +106,15 @@ services:
     image: ghcr.io/fhenixprotocol/threshold-network
     container_name: coordinator
     network_mode: "host"
+    ports:
+      - "50050:50050" # Grpc port
+    restart: unless-stopped
     command: /usr/local/bin/coordinator-service
     depends_on:
       rabbitmq:
         condition: service_healthy
     volumes:
-      - ./docker/:/app/
-      - ${COORDINATOR_DISPATCHER_CONFIG_FILE:-./config.toml}:/app/config.toml
+      - configs:/app
 
   dispatcher:
     build: .
@@ -103,15 +122,14 @@ services:
     container_name: dispatcher
     network_mode: "host"
     ports:
-      - "3000:3000"
-      - "50054:50054"
+      - "3000:3000" # HTTP port
+      - "50054:50054" # GRPC port
     command: /usr/local/bin/dispatcher-service
     depends_on:
       rabbitmq:
         condition: service_healthy
     volumes:
-      - ./docker/:/app/
-      - ${COORDINATOR_DISPATCHER_CONFIG_FILE:-./config.toml}:/app/config.toml
+      - configs:/app
 
   # Party member services using the template
   party-member-0:
@@ -139,11 +157,15 @@ services:
       - CONFIG_PATH=/app/configs/pm_config_03.toml
 
   zk-verifier:
-    image: ghcr.io/fhenixprotocol/zk-verifier:v0.1.0-alpha.9
+    image: ghcr.io/fhenixprotocol/zk-verifier
     ports:
       - "3001:3000"
     environment:
       - RUST_LOG=trace
+      - CONFIG_PATH=/app/configs/zk_verifier_config.toml
     volumes:
-      - ${ZKV_CONFIG_FOLDER_PATH:-./config}:/app/config
-      - ${KEYS_PATH:-./keys}:/app/keys
+      - configs:/app/configs
+      - keys:/app/keys
+    depends_on:
+      preprocessor:
+        condition: service_completed_successfully

@@ -1,0 +1,76 @@
+num_parties = 2
+lwe_m = 1024
+lwe_k = 630
+lwe_dimension = 1
+lwe_pk_rows = 2
+
+# -------------------
+# Coordinator
+# -------------------
+
+[coordinator]
+address = "0.0.0.0:50050"
+logger = { level = "info", show_file = false, show_line_number = false, show_target = false, show_thread_id = false, show_thread_name = false }
+
+# gRPC service configuration
+[coordinator.services.grpc]
+enabled = true
+address = "127.0.0.1"
+port = 50050
+
+[coordinator.broadcast]
+retry_config = { max_retries = 3, retry_delay_ms = 100 }
+min_party_members_for_step = { type = "All" }
+# Example of a config with a minimum of 1 party member for a step
+# min_party_members_for_step = { type = "Some", count = 1 }
+
+[coordinator.party_members]
+addresses = ["localhost:1337", "localhost:1338", "localhost:1339", "localhost:1340"]
+
+[coordinator.rabbitmq]
+# For Docker environment:
+# url = "amqp://rabbitmq:5672"
+# For local development:
+url = "amqp://localhost:5672"
+retry_config = { max_retries = 5, retry_delay_ms = 1000 }
+
+[coordinator.dispatcher]
+request_queue = "coordinator_requests"
+response_queue = "coordinator_responses"
+
+# -------------------
+# Dispatcher
+# -------------------
+
+[dispatcher]
+address = "0.0.0.0:50054"
+logger = { level = "info", show_file = false, show_line_number = false, show_target = false, show_thread_id = false, show_thread_name = false }
+
+# gRPC service configuration
+[dispatcher.services.grpc]
+enabled = true
+address = "127.0.0.1"
+port = 50054
+
+# HTTP service configuration
+[dispatcher.services.http]
+enabled = true
+address = "127.0.0.1"
+port = 3000
+
+# RabbitMQ configuration
+[dispatcher.rabbitmq]
+url = "amqp://localhost:5672"
+retry_config = { max_retries = 5, retry_delay_ms = 1000 }
+
+[dispatcher.coordinator]
+request_queue = "coordinator_requests"
+response_queue = "coordinator_responses"
+
+[dispatcher.ct_source]
+url = "http://localhost:8448"
+timeout_ms = 10000
+
+[dispatcher.ct_verifier]
+abi_path = "crates/dispatcher/src/operations/ct_verifier/abi"
+chains.420105 = { rpc_url = "http://localhost:42069", acl_contract_address = "0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9" }
