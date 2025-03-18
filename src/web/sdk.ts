@@ -79,7 +79,7 @@ async function encrypt<T extends any[]>(
   const keysResult = encryptGetKeys();
 
   if (!keysResult.success) return ResultErr(`encrypt :: ${keysResult.error}`);
-  const { fhePublicKey, crs, coFheUrl, account, chainId } = keysResult.data;
+  const { fhePublicKey, crs, verifierUrl, account, chainId } = keysResult.data;
 
   const encryptableItems = encryptExtract(item);
 
@@ -103,7 +103,7 @@ async function encrypt<T extends any[]>(
   setState(EncryptStep.Verify);
 
   const zkVerifyRes = await zkVerify(
-    coFheUrl,
+    verifierUrl,
     proved,
     account,
     securityZone,

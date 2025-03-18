@@ -50,6 +50,7 @@ export type SdkStore = SdkStoreProviderInitialization &
     crs: ChainRecord<Uint8Array | undefined>;
 
     coFheUrl: string | undefined;
+    verifierUrl: string | undefined;
   };
 
 export const _sdkStore = createStore<SdkStore>(
@@ -62,6 +63,7 @@ export const _sdkStore = createStore<SdkStore>(
       crs: {},
 
       coFheUrl: undefined,
+      verifierUrl: undefined,
 
       providerInitialized: false,
       provider: undefined as never,
@@ -117,15 +119,17 @@ export const _store_initialize = async (params: InitializationParams) => {
     provider,
     signer,
     securityZones = [0],
-    coFheUrl = undefined,
     tfhePublicKeySerializer,
     compactPkeCrsSerializer,
+    coFheUrl,
+    verifierUrl,
   } = params;
 
   _sdkStore.setState({
     providerInitialized: false,
     signerInitialized: false,
     coFheUrl,
+    verifierUrl,
   });
 
   // PROVIDER
@@ -137,6 +141,29 @@ export const _store_initialize = async (params: InitializationParams) => {
   if (chainId != null && provider != null) {
     _sdkStore.setState({ providerInitialized: true, provider, chainId });
   }
+
+  // TEMP: Extract out
+
+  // Verify signer address is registered with verifier
+  if (verifierUrl != null && signer != null) {
+    try {
+      const signerAddress = await signer.getAddress();
+      const response = await fetch(`${verifierUrl}/signerAddress`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+    } catch (err) {
+      console.warn(`Failed to verify signer address with verifier: ${err}`);
+    }
+  }
+
+  // END TEMP
 
   // IS TESTNET
   const isTestnet = await checkIsTestnet(provider);
@@ -216,7 +243,7 @@ export const _store_fetchKeys = async (
 
   // Fetch publicKey from CoFhe
   try {
-    const pk_res = await fetch(`${coFheUrl}:8448/GetNetworkPublicKey`, {
+    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -231,7 +258,7 @@ export const _store_fetchKeys = async (
   }
 
   try {
-    const crs_res = await fetch(`${coFheUrl}:8448/GetCrs`, {
+    const crs_res = await fetch(`${coFheUrl}/GetCrs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

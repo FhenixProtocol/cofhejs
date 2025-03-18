@@ -68,6 +68,7 @@ const _checkInitialized = (
     provider?: boolean;
     signer?: boolean;
     coFheUrl?: boolean;
+    verifierUrl?: boolean;
   },
 ) => {
   if (
@@ -81,6 +82,11 @@ const _checkInitialized = (
   if (!state.isTestnet && options?.coFheUrl !== false && !state.coFheUrl)
     return ResultErr(
       "cofhejs not initialized with a coFheUrl. Set `coFheUrl` in `cofhejs.initialize`.",
+    );
+
+  if (!state.isTestnet && options?.verifierUrl !== false && !state.verifierUrl)
+    return ResultErr(
+      "cofhejs not initialized with a verifierUrl. Set `verifierUrl` in `cofhejs.initialize`.",
     );
 
   if (options?.provider !== false && !state.providerInitialized)
@@ -298,6 +304,7 @@ export function encryptGetKeys(): Result<{
   fhePublicKey: Uint8Array;
   crs: Uint8Array;
   coFheUrl: string;
+  verifierUrl: string;
   account: string;
   chainId: string;
 }> {
@@ -327,10 +334,15 @@ export function encryptGetKeys(): Result<{
   const coFheUrl = state.coFheUrl;
   if (coFheUrl == null) return ResultErr("encrypt :: coFheUrl not initialized");
 
+  const verifierUrl = state.verifierUrl;
+  if (verifierUrl == null)
+    return ResultErr("encrypt :: verifierUrl not initialized");
+
   return ResultOk({
     fhePublicKey,
     crs,
     coFheUrl,
+    verifierUrl,
     account: state.account,
     chainId: state.chainId,
   });
@@ -435,7 +447,7 @@ export async function unseal<U extends FheTypes>(
 
   let sealed: string | undefined;
   try {
-    const sealOutputRes = await fetch(`${coFheUrl}:8448/sealOutput`, {
+    const sealOutputRes = await fetch(`${coFheUrl}/sealOutput`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

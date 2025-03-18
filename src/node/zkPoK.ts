@@ -120,7 +120,7 @@ export const zkProve = async (
 };
 
 export const zkVerify = async (
-  coFheUrl: string,
+  verifierUrl: string,
   compactList: ProvenCompactCiphertextList,
   address: string,
   securityZone: number,
@@ -146,7 +146,7 @@ export const zkVerify = async (
 
   // Send request to verification server
   try {
-    const response = await fetch(`${coFheUrl}/verify`, {
+    const response = await fetch(`${verifierUrl}/verify`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

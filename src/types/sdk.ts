@@ -18,6 +18,7 @@ export type InitializationParams = {
   signer?: AbstractSigner;
   securityZones?: number[];
   coFheUrl?: string;
+  verifierUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;
 };

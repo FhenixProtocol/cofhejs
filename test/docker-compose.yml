@@ -42,6 +42,8 @@ services:
         cp /app/docker/test_data/ck.binfile /app/docker/test_data/0/decryption_key &&
         cp /app/docker/test_data/public_key /app/docker/test_data/0/ &&
         cp /app/docker/test_data/computation_key /app/docker/test_data/0 &&
+        cp /app/docker/test_data/crs /app/docker/test_data/0/crs &&
+        cp -r /app/docker/test_data/0 /app/docker/test_data/1 &&
         echo 'Preprocessor done, keys copied to security zone 0 folder.'
       "
     volumes:

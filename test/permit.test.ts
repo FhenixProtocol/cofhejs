@@ -29,14 +29,18 @@ describe("Permit Tests", () => {
   const counterProjectId = "COUNTER";
   const uniswapProjectId = "UNISWAP";
 
+  const rpcUrl = "http://127.0.0.1:42069";
+  const coFheUrl = "http://127.0.0.1:8448";
+  const verifierUrl = "http://127.0.0.1:3001";
+
   beforeAll(async () => {
     bobPublicKey = await createTfhePublicKey();
-    bobProvider = new MockProvider(bobPublicKey, BobWallet, 420105);
+    bobProvider = new MockProvider(bobPublicKey, BobWallet, rpcUrl, 420105n);
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
 
     adaPublicKey = await createTfhePublicKey();
-    adaProvider = new MockProvider(adaPublicKey, AdaWallet, 420105);
+    adaProvider = new MockProvider(adaPublicKey, AdaWallet, rpcUrl, 420105n);
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();
   });

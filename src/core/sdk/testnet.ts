@@ -47,7 +47,6 @@ export async function checkIsTestnet(
 
     return zkVerifierExists && queryDecrypterExists;
   } catch (err) {
-    console.log("checkIsTestnet :: err", err);
     return false;
   }
 }
