@@ -9,6 +9,7 @@ import {
   InitializationParams,
 } from "../../types";
 import { checkIsTestnet } from "./testnet";
+import { persist } from "zustand/middleware";
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -37,6 +38,21 @@ type SdkStoreSignerInitialization =
       account: string;
     };
 
+export type KeysStore = {
+  fhe: ChainRecord<SecurityZoneRecord<Uint8Array | undefined>>;
+  crs: ChainRecord<Uint8Array | undefined>;
+};
+
+export const _keysStore = createStore<KeysStore>()(
+  persist(
+    () => ({
+      fhe: {},
+      crs: {},
+    }),
+    { name: "cofhejs-keys" },
+  ),
+);
+
 export type SdkStore = SdkStoreProviderInitialization &
   SdkStoreSignerInitialization & {
     provider: AbstractProvider;
@@ -46,8 +62,6 @@ export type SdkStore = SdkStoreProviderInitialization &
     fheKeysInitialized: boolean;
 
     securityZones: number[];
-    fheKeys: ChainRecord<SecurityZoneRecord<Uint8Array | undefined>>;
-    crs: ChainRecord<Uint8Array | undefined>;
 
     coFheUrl: string | undefined;
     verifierUrl: string | undefined;
@@ -59,8 +73,6 @@ export const _sdkStore = createStore<SdkStore>(
       fheKeysInitialized: false,
 
       securityZones: [0],
-      fheKeys: {},
-      crs: {},
 
       coFheUrl: undefined,
       verifierUrl: undefined,
@@ -84,7 +96,7 @@ export const _store_isTestnet = () => {
 
 const _store_getFheKey = (chainId: string | undefined, securityZone = 0) => {
   if (chainId == null || securityZone == null) return undefined;
-  return _sdkStore.getState().fheKeys[chainId]?.[securityZone];
+  return _keysStore.getState().fhe[chainId]?.[securityZone];
 };
 
 export const _store_getConnectedChainFheKey = (securityZone = 0) => {
@@ -93,12 +105,12 @@ export const _store_getConnectedChainFheKey = (securityZone = 0) => {
   if (securityZone == null) return undefined;
   if (state.chainId == null) return undefined;
 
-  return state.fheKeys[state.chainId]?.[securityZone];
+  return _keysStore.getState().fhe[state.chainId]?.[securityZone];
 };
 
 export const _store_getCrs = (chainId: string | undefined) => {
   if (chainId == null) return undefined;
-  return _sdkStore.getState().crs[chainId];
+  return _keysStore.getState().crs[chainId];
 };
 
 const getChainIdFromProvider = async (
@@ -145,9 +157,8 @@ export const _store_initialize = async (params: InitializationParams) => {
   // TEMP: Extract out
 
   // Verify signer address is registered with verifier
-  if (verifierUrl != null && signer != null) {
+  if (verifierUrl != null) {
     try {
-      const signerAddress = await signer.getAddress();
       const response = await fetch(`${verifierUrl}:3001/signerAddress`, {
         method: "GET",
         headers: {
@@ -160,6 +171,7 @@ export const _store_initialize = async (params: InitializationParams) => {
       }
     } catch (err) {
       console.warn(`Failed to verify signer address with verifier: ${err}`);
+      throw err;
     }
   }
 
@@ -312,10 +324,10 @@ export const _store_fetchKeys = async (
     throw new Error(`Error serializing CRS ${err}`);
   }
 
-  _sdkStore.setState(
-    produce<SdkStore>((state) => {
-      if (state.fheKeys[chainId] == null) state.fheKeys[chainId] = {};
-      state.fheKeys[chainId][securityZone] = pk_buff;
+  _keysStore.setState(
+    produce<KeysStore>((state) => {
+      if (state.fhe[chainId] == null) state.fhe[chainId] = {};
+      state.fhe[chainId][securityZone] = pk_buff;
       state.crs[chainId] = crs_buff;
     }),
   );

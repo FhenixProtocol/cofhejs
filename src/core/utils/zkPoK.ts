@@ -21,6 +21,8 @@ export function constructZkPoKMetadata(
     value = value >>> 8;
   }
 
+  // console.log("chainId", chainId, toHexString(chainIdBytes));
+
   const metadata = new Uint8Array(1 + accountBytes.length + 32);
   metadata[0] = securityZone;
   metadata.set(accountBytes, 1);
