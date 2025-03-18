@@ -62,27 +62,33 @@ async function mockZkVerifySign(
   // Create array to store results
   const results = [];
 
-  for (const item of items) {
-    // Pack the data into bytes and hash it
-    const packedData = ethers.solidityPacked(
-      ["uint256", "int32", "uint8"],
-      [item.data, securityZone, item.utype],
-    );
-    const messageHash = ethers.keccak256(packedData);
+  try {
+    for (const item of items) {
+      // Pack the data into bytes and hash it
+      const packedData = ethers.solidityPacked(
+        ["uint256", "int32", "uint8"],
+        [BigInt(item.data), securityZone, item.utype],
+      );
+      const messageHash = ethers.keccak256(packedData);
 
-    // Convert to EthSignedMessageHash (adds "\x19Ethereum Signed Message:\n32" prefix)
-    const ethSignedHash = ethers.hashMessage(ethers.getBytes(messageHash));
+      // Convert to EthSignedMessageHash (adds "\x19Ethereum Signed Message:\n32" prefix)
+      const ethSignedHash = ethers.hashMessage(ethers.getBytes(messageHash));
 
-    // Sign the message
-    const signature = await wallet.signMessage(ethers.getBytes(ethSignedHash));
+      // Sign the message
+      const signature = await wallet.signMessage(
+        ethers.getBytes(ethSignedHash),
+      );
 
-    results.push({
-      ct_hash: messageHash,
-      signature: signature,
-    });
+      results.push({
+        ct_hash: messageHash,
+        signature: signature,
+      });
+    }
+    return ResultOk(results);
+  } catch (err) {
+    console.log("mockZkVerifySign :: err:", err);
+    return ResultErr(`mockZkVerifySign :: err: ${err}`);
   }
-
-  return ResultOk(results);
 }
 
 export async function mockEncrypt<T extends any[]>(
