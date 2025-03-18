@@ -8,4 +8,4 @@ export const MAX_UINT256: bigint =
 
 export const FheOpsAddress = "0x0000000000000000000000000000000000000080";
 export const PUBLIC_KEY_LENGTH_MIN = 15_000;
-export const DEFAULT_COFHE_URL = "http://127.0.0.1:8448";
+export const DEFAULT_COFHE_URL = "http://127.0.0.1";

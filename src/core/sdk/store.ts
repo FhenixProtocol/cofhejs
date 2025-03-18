@@ -148,7 +148,7 @@ export const _store_initialize = async (params: InitializationParams) => {
   if (verifierUrl != null && signer != null) {
     try {
       const signerAddress = await signer.getAddress();
-      const response = await fetch(`${verifierUrl}/signerAddress`, {
+      const response = await fetch(`${verifierUrl}:3001/signerAddress`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -242,8 +242,9 @@ export const _store_fetchKeys = async (
   let crs_data: string | undefined = undefined;
 
   // Fetch publicKey from CoFhe
+  console.log("fetching pk from cofhe", `${coFheUrl}:8448/GetNetworkPublicKey`);
   try {
-    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
+    const pk_res = await fetch(`${coFheUrl}:8448/GetNetworkPublicKey`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -258,7 +259,7 @@ export const _store_fetchKeys = async (
   }
 
   try {
-    const crs_res = await fetch(`${coFheUrl}/GetCrs`, {
+    const crs_res = await fetch(`${coFheUrl}:8448/GetCrs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

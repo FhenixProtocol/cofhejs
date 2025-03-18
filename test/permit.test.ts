@@ -30,8 +30,8 @@ describe("Permit Tests", () => {
   const uniswapProjectId = "UNISWAP";
 
   const rpcUrl = "http://127.0.0.1:42069";
-  const coFheUrl = "http://127.0.0.1:8448";
-  const verifierUrl = "http://127.0.0.1:3001";
+  const coFheUrl = "http://127.0.0.1";
+  const verifierUrl = "http://127.0.0.1";
 
   beforeAll(async () => {
     bobPublicKey = await createTfhePublicKey();

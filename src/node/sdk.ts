@@ -83,6 +83,8 @@ async function encrypt<T extends any[]>(
 
   const encryptableItems = encryptExtract(item);
 
+  console.log("encryptableItems", encryptableItems);
+
   setState(EncryptStep.Pack);
 
   const builder = zkPack(
@@ -123,6 +125,8 @@ async function encrypt<T extends any[]>(
       signature,
     }),
   );
+
+  console.log("inItems", inItems);
 
   setState(EncryptStep.Replace);
 

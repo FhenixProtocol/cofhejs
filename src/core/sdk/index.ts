@@ -442,12 +442,13 @@ export async function unseal<U extends FheTypes>(
     );
   }
 
-  const coFheUrl = _sdkStore.getState().coFheUrl;
-  if (coFheUrl == null) return ResultErr("unseal :: coFheUrl not initialized");
+  const verifierUrl = _sdkStore.getState().verifierUrl;
+  if (verifierUrl == null)
+    return ResultErr("unseal :: verifierUrl not initialized");
 
   let sealed: string | undefined;
   try {
-    const sealOutputRes = await fetch(`${coFheUrl}/sealOutput`, {
+    const sealOutputRes = await fetch(`${verifierUrl}:50054/sealOutput`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

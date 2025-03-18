@@ -1,9 +1,8 @@
 const ARB_SEPOLIA_RPC = "https://arbitrum-sepolia.drpc.org";
 const ARB_SEPOLIA_CHAIN_ID = 421614n;
 const ARB_SEPOLIA_COFHE_URL =
-  "http://cofhe-sepolia-cofhe-full-lb-59709c003d195d28.elb.eu-west-1.amazonaws.com:8448/";
-const ARB_SEPOLIA_VERIFIER_URL =
-  "http://fullstack.tn-testnets.fhenix.zone:3001";
+  "http://cofhe-sepolia-cofhe-full-lb-59709c003d195d28.elb.eu-west-1.amazonaws.com";
+const ARB_SEPOLIA_VERIFIER_URL = "http://fullstack.tn-testnets.fhenix.zone";
 
 /**
  * @vitest-environment happy-dom
