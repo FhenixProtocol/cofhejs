@@ -1,7 +1,7 @@
 const ARB_SEPOLIA_RPC = "https://arbitrum-sepolia.drpc.org";
 const ARB_SEPOLIA_CHAIN_ID = 421614n;
 const ARB_SEPOLIA_COFHE_URL =
-  "http://cofhe-sepolia-cofhe-full-lb-59709c003d195d28.elb.eu-west-1.amazonaws.com";
+  "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com";
 const ARB_SEPOLIA_VERIFIER_URL = "http://fullstack.tn-testnets.fhenix.zone";
 
 /**
@@ -11,7 +11,13 @@ const ARB_SEPOLIA_VERIFIER_URL = "http://fullstack.tn-testnets.fhenix.zone";
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
-import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
+import {
+  AdaWallet,
+  BobWallet,
+  expectResultSuccess,
+  MockProvider,
+  MockSigner,
+} from "./utils";
 import { afterEach } from "vitest";
 import { getAddress } from "ethers";
 import {
@@ -111,33 +117,28 @@ describe("Arbitrum Sepolia Tests", () => {
     expect(cofhejs.store.getState().fheKeysInitialized).toEqual(true);
   });
 
-  it("re-initialize (change account)", async () => {
-    const bobPermit = (await initSdkWithBob())!;
-    expect(bobPermit.success).toEqual(true);
-    expect(bobPermit.data).to.not.equal(undefined);
+  it("re-initialize (change account)", { timeout: 320000 }, async () => {
+    const bobPermit = expectResultSuccess(await initSdkWithBob());
 
     // Bob's new permit is the active permit
 
-    let bobFetchedPermit = await cofhejs.getPermit();
-    expect(bobFetchedPermit.success).toEqual(true);
-    expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
+    let bobFetchedPermit: Permit | undefined = expectResultSuccess(
+      await cofhejs.getPermit(),
+    );
+    expect(bobFetchedPermit.getHash()).toEqual(bobPermit?.getHash());
 
-    const adaPermit = (await initSdkWithAda())!;
-    expect(adaPermit.success).toEqual(true);
-    expect(adaPermit.data).to.not.equal(undefined);
+    const adaPermit = expectResultSuccess(await initSdkWithAda());
 
     // Ada does not have an active permit
 
-    const adaFetchedPermit = await cofhejs.getPermit();
-    expect(adaFetchedPermit.success).toEqual(true);
-    expect(adaFetchedPermit.data?.getHash()).toEqual(adaPermit.data?.getHash());
+    const adaFetchedPermit = expectResultSuccess(await cofhejs.getPermit());
+    expect(adaFetchedPermit?.getHash()).toEqual(adaPermit?.getHash());
 
     // Switch back to bob
 
     // Bob's active permit is pulled from the store during init and exists
-    bobFetchedPermit = (await initSdkWithBob()) as Result<Permit>;
-    expect(bobFetchedPermit.success).toEqual(true);
-    expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
+    bobFetchedPermit = expectResultSuccess(await initSdkWithBob());
+    expect(bobFetchedPermit?.getHash()).toEqual(bobPermit?.getHash());
   });
 
   it("encrypt", { timeout: 320000 }, async () => {
@@ -152,14 +153,12 @@ describe("Arbitrum Sepolia Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    const nestedEncrypt = await cofhejs.encrypt(logState, [
+    const nestedEncryptResult = await cofhejs.encrypt(logState, [
       { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
       ["hello", 20n, Encryptable.address(contractAddress)],
       Encryptable.uint8("10"),
     ] as const);
-
-    expect(nestedEncrypt.success).toEqual(true);
-    expect(nestedEncrypt.data).to.not.equal(undefined);
+    const nestedEncrypt = expectResultSuccess(nestedEncryptResult);
 
     type ExpectedEncryptedType = [
       {
@@ -172,7 +171,7 @@ describe("Arbitrum Sepolia Tests", () => {
     ];
 
     console.log("bob address", bobAddress);
-    console.log(nestedEncrypt.data);
-    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
+    console.log(nestedEncrypt);
+    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt);
   });
 });

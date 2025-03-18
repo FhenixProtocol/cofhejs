@@ -105,30 +105,30 @@ describe.only("Local Testnet (Anvil) Tests", () => {
 
   it("re-initialize (change account)", async () => {
     const bobPermit = (await initSdkWithBob())!;
-    expect(bobPermit.success).toEqual(true);
+    expect(bobPermit.error).toEqual(null);
     expect(bobPermit.data).to.not.equal(undefined);
 
     // Bob's new permit is the active permit
 
     let bobFetchedPermit = await cofhejs.getPermit();
-    expect(bobFetchedPermit.success).toEqual(true);
+    expect(bobFetchedPermit.error).toEqual(null);
     expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
 
     const adaPermit = (await initSdkWithAda())!;
-    expect(adaPermit.success).toEqual(true);
+    expect(adaPermit.error).toEqual(null);
     expect(adaPermit.data).to.not.equal(undefined);
 
     // Ada does not have an active permit
 
     const adaFetchedPermit = await cofhejs.getPermit();
-    expect(adaFetchedPermit.success).toEqual(true);
+    expect(adaFetchedPermit.error).toEqual(null);
     expect(adaFetchedPermit.data?.getHash()).toEqual(adaPermit.data?.getHash());
 
     // Switch back to bob
 
     // Bob's active permit is pulled from the store during init and exists
     bobFetchedPermit = (await initSdkWithBob()) as Result<Permit>;
-    expect(bobFetchedPermit.success).toEqual(true);
+    expect(bobFetchedPermit.error).toEqual(null);
     expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
   });
 
@@ -150,7 +150,7 @@ describe.only("Local Testnet (Anvil) Tests", () => {
       Encryptable.uint8("10"),
     ] as const);
 
-    expect(nestedEncrypt.success).toEqual(true);
+    expect(nestedEncrypt.error).toEqual(null);
     expect(nestedEncrypt.data).to.not.equal(undefined);
 
     type ExpectedEncryptedType = [
@@ -284,7 +284,7 @@ describe.only("Local Testnet (Anvil) Tests", () => {
   //   // const unsealedValue = cofhejs.unsealCiphertext(
   //   //   uint8ArrayToString(encryptedValue.data!.data),
   //   // );
-  //   // expect(unsealedValue.success).toEqual(true);
+  //   // expect(unsealedValue.error).toEqual(null);
   //   // expect(unsealedValue.data).toEqual(5n);
 
   //   // `unseal`

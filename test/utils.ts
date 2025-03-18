@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { JsonRpcProvider, AbiCoder, ethers } from "ethers";
-import { AbstractProvider, AbstractSigner } from "../src/types";
+import { AbstractProvider, AbstractSigner, Result } from "../src/types";
+import { expect } from "vitest";
 
 // Initialize genesis accounts
 const mnemonics = [
@@ -109,4 +110,18 @@ export const uint8ArrayToString = (value: Uint8Array): string => {
   return Array.from(value)
     .map((byte) => String.fromCharCode(byte))
     .join("");
+};
+
+export const expectResultSuccess = <T>(result: Result<T>): T => {
+  expect(result.error).toEqual(null);
+  expect(result.data).not.toEqual(null);
+  return result.data as T;
+};
+
+export const expectResultError = <T>(
+  result: Result<T>,
+  error: string,
+): void => {
+  expect(result.error).toEqual(error);
+  expect(result.data).toEqual(null);
 };

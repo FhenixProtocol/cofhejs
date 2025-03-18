@@ -5,7 +5,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
-import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
+import {
+  AdaWallet,
+  BobWallet,
+  expectResultError,
+  expectResultSuccess,
+  MockProvider,
+  MockSigner,
+} from "./utils";
 import { afterEach } from "vitest";
 import { getAddress } from "ethers";
 import {
@@ -97,57 +104,50 @@ describe("Sdk Tests", () => {
     expect(cofhejs.store.getState().signerInitialized).toEqual(true);
     expect(cofhejs.store.getState().fheKeysInitialized).toEqual(true);
 
-    const initWithoutProviderResult = await cofhejs.initialize({
-      target: "node",
-      // provider: bobProvider,
-      // signer: bobSigner,
-      coFheUrl,
-    } as unknown as InitializationParams);
-    expect(initWithoutProviderResult.success).toEqual(false);
-    expect(initWithoutProviderResult.error).toEqual(
+    expectResultError(
+      await cofhejs.initialize({
+        target: "node",
+        // provider: bobProvider,
+        // signer: bobSigner,
+        coFheUrl,
+      } as unknown as InitializationParams),
       "initialize :: missing provider - Please provide an AbstractProvider interface",
     );
 
-    const initWithoutSecurityZonesResult = await cofhejs.initialize({
-      target: "node",
-      provider: bobProvider,
-      signer: bobSigner,
-      securityZones: [],
-      coFheUrl,
-    } as unknown as InitializationParams);
-    expect(initWithoutSecurityZonesResult.success).toEqual(false);
-    expect(initWithoutSecurityZonesResult.error).toEqual(
+    expectResultError(
+      await cofhejs.initialize({
+        target: "node",
+        provider: bobProvider,
+        signer: bobSigner,
+        securityZones: [],
+        coFheUrl,
+      } as unknown as InitializationParams),
       "initialize :: a list of securityZones was provided, but it is empty",
     );
   });
 
   it("re-initialize (change account)", async () => {
-    const bobPermit = (await initSdkWithBob())!;
-    expect(bobPermit.success).toEqual(true);
-    expect(bobPermit.data).to.not.equal(undefined);
+    const bobPermit = expectResultSuccess(await initSdkWithBob());
 
     // Bob's new permit is the active permit
 
-    let bobFetchedPermit = await cofhejs.getPermit();
-    expect(bobFetchedPermit.success).toEqual(true);
-    expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
+    let bobFetchedPermit: Permit | undefined = expectResultSuccess(
+      await cofhejs.getPermit(),
+    );
+    expect(bobFetchedPermit.getHash()).toEqual(bobPermit?.getHash());
 
-    const adaPermit = (await initSdkWithAda())!;
-    expect(adaPermit.success).toEqual(true);
-    expect(adaPermit.data).to.not.equal(undefined);
+    const adaPermit = expectResultSuccess(await initSdkWithAda());
 
     // Ada does not have an active permit
 
-    const adaFetchedPermit = await cofhejs.getPermit();
-    expect(adaFetchedPermit.success).toEqual(true);
-    expect(adaFetchedPermit.data?.getHash()).toEqual(adaPermit.data?.getHash());
+    const adaFetchedPermit = expectResultSuccess(await cofhejs.getPermit());
+    expect(adaFetchedPermit.getHash()).toEqual(adaPermit?.getHash());
 
     // Switch back to bob
 
     // Bob's active permit is pulled from the store during init and exists
-    bobFetchedPermit = (await initSdkWithBob()) as Result<Permit>;
-    expect(bobFetchedPermit.success).toEqual(true);
-    expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
+    bobFetchedPermit = expectResultSuccess(await initSdkWithBob());
+    expect(bobFetchedPermit?.getHash()).toEqual(bobPermit?.getHash());
   });
 
   // TODO: Re-enable after zkVerification is implemented
@@ -212,31 +212,31 @@ describe("Sdk Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    console.log("encrypting");
-
     try {
-      const nestedEncrypt = await cofhejs.encrypt(logState, [
+      const nestedEncryptResult = await cofhejs.encrypt(logState, [
         { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
         ["hello", 20n, Encryptable.address(contractAddress)],
         Encryptable.uint8("10"),
       ] as const);
-      // console.log("nestedEncrypt", nestedEncrypt);
-      // expect(nestedEncrypt.success).toEqual(true);
-      // expect(nestedEncrypt.data).to.not.equal(undefined);
-      // type ExpectedEncryptedType = [
-      //   {
-      //     readonly a: CoFheInBool;
-      //     readonly b: CoFheInUint64;
-      //     readonly c: string;
-      //   },
-      //   Readonly<[string, bigint, CoFheInAddress]>,
-      //   CoFheInUint8,
-      // ];
-      // console.log("bob address", bobAddress);
-      // console.log(nestedEncrypt.data);
-      // expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
+
+      const nestedEncrypt = expectResultSuccess(nestedEncryptResult);
+
+      type ExpectedEncryptedType = [
+        {
+          readonly a: CoFheInBool;
+          readonly b: CoFheInUint64;
+          readonly c: string;
+        },
+        Readonly<[string, bigint, CoFheInAddress]>,
+        CoFheInUint8,
+      ];
+
+      console.log("bob address", bobAddress);
+      console.log(nestedEncrypt);
+
+      expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt);
     } catch (err) {
-      console.log("error", err);
+      console.log("Err in Encrypt (Type Check)", err);
     }
   });
 
@@ -254,10 +254,12 @@ describe("Sdk Tests", () => {
     // zustand persist is heavily tested, this test is just to ensure that its working in our implementation
 
     await initSdkWithBob();
-    const permit1 = await cofhejs.createPermit({
-      type: "self",
-      issuer: bobAddress,
-    });
+    const permit1 = expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
 
     const dumpLocalStorage = (): { [key: string]: object } => {
       const dump: { [key: string]: object } = {};
@@ -272,7 +274,12 @@ describe("Sdk Tests", () => {
 
     // Sdk Store
     const dumped = dumpLocalStorage();
-    expect(dumped).to.have.keys(["cofhejs-permits"]);
+    expect(dumped).to.have.keys(["cofhejs-permits", "cofhejs-keys"]);
+
+    // Keys store
+    expect(dumped["cofhejs-keys"]["state"]).to.have.keys(["fhe", "crs"]);
+    expect(dumped["cofhejs-keys"]["state"]["fhe"]).to.have.keys(["420105"]);
+    expect(dumped["cofhejs-keys"]["state"]["crs"]).to.have.keys(["420105"]);
 
     // Permits store
 
@@ -284,58 +291,57 @@ describe("Sdk Tests", () => {
     // Permits
     const bobsPermitsDumped =
       dumped["cofhejs-permits"]["state"]["permits"][bobAddress];
-    expect(bobsPermitsDumped).to.have.keys(
-      permit1?.data?.getHash() ?? "permit1Hash",
-    );
+    expect(bobsPermitsDumped).to.have.keys(permit1?.getHash() ?? "permit1Hash");
 
     // ActivePermit
     expect(
       dumped["cofhejs-permits"]["state"]["activePermitHash"][bobAddress],
-    ).toEqual(permit1?.data?.getHash());
+    ).toEqual(permit1?.getHash());
   });
   it("createPermit", async () => {
-    const createPermitWithoutInitResult = await cofhejs.createPermit({
-      type: "self",
-      issuer: bobAddress,
-    });
-    expect(createPermitWithoutInitResult.success).toEqual(false);
-    expect(createPermitWithoutInitResult.error).toEqual(
+    expectResultError(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
       "createPermit :: cofhejs not initialized. Use `cofhejs.initialize(...)`.",
     );
 
     await initSdkWithBob();
-    const permit = await cofhejs.createPermit({
-      type: "self",
-      issuer: bobAddress,
-    });
+    const permit = expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
 
     // Permit established in store
 
     const storePermitSerialized =
-      permitStore.store.getState().permits[bobAddress]?.[
-        permit.data!.getHash()
-      ];
+      permitStore.store.getState().permits[bobAddress]?.[permit.getHash()];
     expect(storePermitSerialized).to.not.be.null;
 
     const storePermit = Permit.deserialize(storePermitSerialized!);
-    expect(storePermit.getHash()).toEqual(permit.data?.getHash());
+    expect(storePermit.getHash()).toEqual(permit.getHash());
 
     // Is active permit
 
     const storeActivePermitHash =
       permitStore.store.getState().activePermitHash[bobAddress];
-    expect(storeActivePermitHash).toEqual(permit.data?.getHash());
+    expect(storeActivePermitHash).toEqual(permit.getHash());
 
     // Creating new permit
 
-    const permit2 = await cofhejs.createPermit({
-      type: "self",
-      issuer: bobAddress,
-    });
+    const permit2 = expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
 
     const storeActivePermitHash2 =
       permitStore.store.getState().activePermitHash[bobAddress];
-    expect(storeActivePermitHash2).toEqual(permit2.data?.getHash());
+    expect(storeActivePermitHash2).toEqual(permit2.getHash());
   });
 
   // The remaining functions rely on the same logic:
@@ -349,12 +355,12 @@ describe("Sdk Tests", () => {
 
   it("unsealCiphertext", async () => {
     await initSdkWithBob();
-    const permit = (
+    const permit = expectResultSuccess(
       await cofhejs.createPermit({
         type: "self",
         issuer: bobAddress,
-      })
-    ).data!;
+      }),
+    );
 
     // Bool
     const boolValue = true;
@@ -452,7 +458,7 @@ describe("Sdk Tests", () => {
   //   // const unsealedValue = cofhejs.unsealCiphertext(
   //   //   uint8ArrayToString(encryptedValue.data!.data),
   //   // );
-  //   // expect(unsealedValue.success).toEqual(true);
+  //   // expect(unsealedValue.error).toEqual(null);
   //   // expect(unsealedValue.data).toEqual(5n);
 
   //   // `unseal`
