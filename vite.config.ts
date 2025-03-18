@@ -18,8 +18,7 @@ export default defineConfig({
     watchExclude: ["**/node_modules/**", "**/dist/**"],
     globalSetup: ["./test/test-setup.ts"],
     reporters: [
-      "basic",
-      "verbose",
+      "default",
       {
         async onWatcherRerun() {
           await teardown();

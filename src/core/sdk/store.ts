@@ -140,6 +140,7 @@ export const _store_initialize = async (params: InitializationParams) => {
 
   // IS TESTNET
   const isTestnet = await checkIsTestnet(provider);
+  console.log("isTestnet", isTestnet);
   _sdkStore.setState({ isTestnet });
 
   // SIGNER

@@ -16,7 +16,7 @@ import { sleep } from "../utils";
 import { _sdkStore } from "./store";
 
 const mockZkVerifierAddress = "0x0000000000000000000000000000000000000100";
-const mockQueryDecrypterAddress = "0x0000000000000000000000000000000000001000";
+const mockQueryDecrypterAddress = "0x0000000000000000000000000000000000000200";
 const mockZkVerifierSignerPkey =
   "0x6c8d7f768a6bb4aafe85e8a2f5a9680355239c7e14646ed62b044e39de154512";
 const existsSignature = "0x267c4ae4";
@@ -27,18 +27,27 @@ export async function checkIsTestnet(
   // Check if testnet mock contracts are deployed by attempting to call them
   try {
     // Call with empty data to check if contracts exist
-    const zkVerifierRes = await provider.call({
+    const zkVerifierExistsRaw = await provider.call({
       to: mockZkVerifierAddress,
       data: existsSignature,
     });
-    const queryDecrypterRes = await provider.call({
+    const queryDecrypterExistsRaw = await provider.call({
       to: mockQueryDecrypterAddress,
       data: existsSignature,
     });
 
-    if (zkVerifierRes === "0x" || queryDecrypterRes === "0x") return false;
-    return true;
+    const [zkVerifierExists] = ethers.AbiCoder.defaultAbiCoder().decode(
+      ["bool"],
+      zkVerifierExistsRaw,
+    );
+    const [queryDecrypterExists] = ethers.AbiCoder.defaultAbiCoder().decode(
+      ["bool"],
+      queryDecrypterExistsRaw,
+    );
+
+    return zkVerifierExists && queryDecrypterExists;
   } catch (err) {
+    console.log("checkIsTestnet :: err", err);
     return false;
   }
 }

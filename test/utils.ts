@@ -60,14 +60,18 @@ export class MockProvider implements AbstractProvider {
   provider: ethers.JsonRpcProvider;
   publicKey: any;
   wallet: ethers.HDNodeWallet;
-  chainId: any;
+  chainId: bigint;
 
-  constructor(pk: any, wallet?: ethers.HDNodeWallet, chainId?: any) {
+  constructor(
+    pk: any,
+    wallet?: ethers.HDNodeWallet,
+    rpcUrl?: string,
+    chainId?: bigint,
+  ) {
     this.publicKey = pk;
     this.wallet = wallet ?? ethers.Wallet.fromPhrase(mnemonics[0]);
-    this.chainId = chainId || "0x10";
-
-    this.provider = new ethers.JsonRpcProvider("http://localhost:42069");
+    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.chainId = chainId ?? 1n;
   }
 
   async getChainId(): Promise<string> {
