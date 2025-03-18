@@ -5,9 +5,9 @@ import { bigintToUint8Array, stringToUint8Array } from "./utils";
 // Mock FHE operations are automatically injected on the hardhat network
 // The utility functions allow the client / sdk to interact with the mocked FHE ops
 
-export const chainIsHardhat = (chainId?: string): boolean => {
+export const chainIsHardhat = (chainId?: bigint): boolean => {
   if (chainId == null) return false;
-  return parseInt(chainId) === 31337;
+  return chainId === 31337n;
 };
 
 export const hardhatMockUnseal = (value: string): bigint => {

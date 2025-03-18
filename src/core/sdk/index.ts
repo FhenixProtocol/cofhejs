@@ -131,11 +131,7 @@ export const createPermit = async (
 
   let permit: Permit;
   try {
-    permit = await Permit.createAndSign(
-      optionsWithDefaults,
-      state.chainId,
-      state.signer,
-    );
+    permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
   } catch (e) {
     return ResultErr(`${createPermit.name} :: ${e}`);
   }

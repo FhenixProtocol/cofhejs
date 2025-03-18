@@ -75,6 +75,7 @@ describe("Permit Tests", () => {
     expect(permit.isSigned()).to.eq(false);
     expect(permit.isExpired()).to.eq(false);
     expect(permit.isValid()).to.deep.eq({ valid: false, error: "not-signed" });
+    expect(permit._signedDomain).to.eq(undefined);
 
     // Sealing pair can decrypt
     const value = 937387;
@@ -113,10 +114,16 @@ describe("Permit Tests", () => {
       issuer: bobAddress,
     });
 
-    await permit.sign(bobProvider.chainId, bobSigner);
+    await permit.sign(bobSigner);
 
     expect(permit.issuerSignature).to.not.eq("0x");
     expect(permit.recipientSignature).to.eq("0x");
+    expect(permit._signedDomain).to.deep.eq({
+      name: "ACL",
+      version: "1",
+      chainId: 420105n,
+      verifyingContract: "0xa6Ea4b5291d044D93b73b3CFf3109A1128663E8B",
+    });
   });
   it("sign (sharing)", async () => {
     const permit = await Permit.create({
@@ -125,7 +132,7 @@ describe("Permit Tests", () => {
       recipient: adaAddress,
     });
 
-    await permit.sign(bobProvider.chainId, bobSigner);
+    await permit.sign(bobSigner);
 
     expect(permit.issuerSignature).to.not.eq("0x");
     expect(permit.recipientSignature).to.eq("0x");
@@ -140,7 +147,7 @@ describe("Permit Tests", () => {
     expect(bobPermit.issuerSignature).to.eq("0x");
     expect(bobPermit.recipientSignature).to.eq("0x");
 
-    await bobPermit.sign(bobProvider.chainId, bobSigner);
+    await bobPermit.sign(bobSigner);
 
     expect(bobPermit.issuerSignature).to.not.eq("0x");
     expect(bobPermit.recipientSignature).to.eq("0x");
@@ -153,7 +160,7 @@ describe("Permit Tests", () => {
     expect(adaPermit.issuerSignature).to.not.eq("0x");
     expect(adaPermit.recipientSignature).to.eq("0x");
 
-    await adaPermit.sign(adaProvider.chainId, adaSigner);
+    await adaPermit.sign(adaSigner);
 
     expect(adaPermit.issuerSignature).to.not.eq("0x");
     expect(adaPermit.recipientSignature).to.not.eq("0x");
@@ -166,7 +173,7 @@ describe("Permit Tests", () => {
       issuer: bobAddress,
     });
 
-    await permit.sign(bobProvider.chainId, bobSigner);
+    await permit.sign(bobSigner);
 
     const { name, type, sealingPair, ...iface } = permit.getInterface();
     const { sealingKey, ...permission } = permit.getPermission();
@@ -336,7 +343,7 @@ describe("Permit Tests", () => {
       issuer: bobAddress,
     });
 
-    await permit.sign(bobProvider.chainId, bobSigner);
+    await permit.sign(bobSigner);
 
     const serialized = permit.serialize();
 

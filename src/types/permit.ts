@@ -1,4 +1,5 @@
 import { SealingKey } from "../core/sdk/sealing";
+import { EIP712Domain, SerializedEIP712Domain } from "./EIP712";
 
 /**
  * Type representing the full Permit
@@ -66,10 +67,10 @@ export type PermitInterface = {
  */
 export type PermitMetadata = {
   /**
-   * Chain that this permit was signed on. In part used for mock encrypt/unseal on hardhat network.
+   * EIP712 domain used to sign this permit.
    * Should not be set manually, included in metadata as part of serialization flows.
    */
-  _signedChainId: string | undefined;
+  _signedDomain: EIP712Domain | undefined;
 };
 
 export type PickPartial<T, F extends keyof T> = Expand<
@@ -109,8 +110,12 @@ export type PermitOptions =
       }
     >;
 
+export type SerializedPermitMetadata = Omit<PermitMetadata, "_signedDomain"> & {
+  _signedDomain: SerializedEIP712Domain | undefined;
+};
+
 export type SerializedPermit = Omit<PermitInterface, "sealingPair"> &
-  PermitMetadata & {
+  SerializedPermitMetadata & {
     sealingPair: {
       privateKey: string;
       publicKey: string;

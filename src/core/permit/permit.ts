@@ -26,6 +26,7 @@ import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils";
 import { ACLEip712DomainFnSig, TaskManagerAddress } from "./consts";
 import { TaskManagerAbiFnSig } from "./consts";
+import { deserializeEIP712Domain, serializeEIP712Domain } from "./utils";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**
@@ -83,10 +84,10 @@ export class Permit implements PermitInterface, PermitMetadata {
   public recipientSignature: string;
 
   /**
-   * Chain that this permit was signed on. In part used for mock encrypt/unseal on hardhat network.
+   * EIP712 domain used to sign this permit.
    * Should not be set manually, included in metadata as part of serialization flows.
    */
-  public _signedChainId: string | undefined = undefined;
+  public _signedDomain: EIP712Domain | undefined = undefined;
 
   public constructor(
     options: PermitInterface,
@@ -103,7 +104,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     this.issuerSignature = options.issuerSignature;
     this.recipientSignature = options.recipientSignature;
 
-    this._signedChainId = metadata?._signedChainId;
+    this._signedDomain = metadata?._signedDomain;
   }
 
   static async create(options: PermitOptions) {
@@ -136,11 +137,10 @@ export class Permit implements PermitInterface, PermitMetadata {
 
   static async createAndSign(
     options: PermitOptions,
-    chainId: string | undefined,
     signer: AbstractSigner | undefined,
   ) {
     const permit = await Permit.create(options);
-    await permit.sign(chainId, signer);
+    await permit.sign(signer);
     return permit;
   }
 
@@ -156,7 +156,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    * @returns {Permit} - New instance of Permit class
    */
   static deserialize = ({
-    _signedChainId,
+    _signedDomain,
     sealingPair,
     ...permit
   }: SerializedPermit) => {
@@ -169,7 +169,7 @@ export class Permit implements PermitInterface, PermitMetadata {
         ),
       },
       {
-        _signedChainId,
+        _signedDomain: deserializeEIP712Domain(_signedDomain),
       },
     );
   };
@@ -227,7 +227,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     const { sealingPair, ...permit } = this.getInterface();
     return {
       ...permit,
-      _signedChainId: this._signedChainId,
+      _signedDomain: serializeEIP712Domain(this._signedDomain),
       sealingPair: {
         publicKey: sealingPair.publicKey,
         privateKey: sealingPair.privateKey,
@@ -341,7 +341,7 @@ export class Permit implements PermitInterface, PermitMetadata {
         "uint256[]",
       ],
       aclEip712DomainRaw,
-    );
+    ) as unknown as [any, string, string, bigint, string, any, any];
 
     return {
       name,
@@ -352,22 +352,39 @@ export class Permit implements PermitInterface, PermitMetadata {
   };
 
   /**
+   * Returns true if the permit's signed domain matches the provided domain.
+   */
+  matchesDomain = (domain: EIP712Domain) => {
+    return (
+      this._signedDomain?.name === domain.name &&
+      this._signedDomain?.version === domain.version &&
+      this._signedDomain?.verifyingContract === domain.verifyingContract &&
+      this._signedDomain?.chainId === domain.chainId
+    );
+  };
+
+  /**
+   * Fetches the EIP712 domain for the connected chain (`provider`)
+   * Returns false if the domain doesn't match, or if the permit has no signed domain
+   *
+   * @param {AbstractProvider} provider - The provider to fetch the EIP712 domain from
+   * @returns {boolean} - True if the domain matches, false otherwise
+   */
+  checkSignedDomainValid = async (provider: AbstractProvider) => {
+    if (this._signedDomain == null) return false;
+    const domain = await this.fetchEIP712Domain(provider);
+    return this.matchesDomain(domain);
+  };
+
+  /**
    * Determines the required signature type.
    * Creates the EIP712 types and message.
    * Prompts the user for their signature.
    * Inserts the signature into `issuerSignature` or `recipientSignature` as necessary.
    *
-   * @param {string} chainId - Used as part of the EIP712 domain, throws if undefined
    * @param {AbstractSigner} signer - Signer responsible for signing the EIP712 permit signature, throws if undefined
    */
-  sign = async (
-    chainId: string | undefined,
-    signer: AbstractSigner | undefined,
-  ) => {
-    if (chainId == null)
-      throw new Error(
-        "Permit :: sign - chainId undefined, cannot sign a permit with an unknown chainId",
-      );
+  sign = async (signer: AbstractSigner | undefined) => {
     if (signer == null)
       throw new Error(
         "Permit :: sign - signer undefined, you must pass in a `signer` for the connected user to create a permit signature",
@@ -391,7 +408,7 @@ export class Permit implements PermitInterface, PermitMetadata {
       this.recipientSignature = signature;
     }
 
-    this._signedChainId = chainId;
+    this._signedDomain = domain;
   };
 
   /**
@@ -400,7 +417,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    */
   unsealCiphertext = (ciphertext: string): bigint => {
     // Early exit with mock unseal if interacting with hardhat network
-    if (chainIsHardhat(this._signedChainId))
+    if (chainIsHardhat(this._signedDomain?.chainId))
       return hardhatMockUnseal(ciphertext);
 
     return this.sealingPair.unseal(ciphertext);
@@ -420,7 +437,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     // SealedItem
     const sealedItem = getAsSealedItem(item);
     if (sealedItem != null) {
-      const bn = chainIsHardhat(this._signedChainId)
+      const bn = chainIsHardhat(this._signedDomain?.chainId)
         ? hardhatMockUnseal(sealedItem.data)
         : this.sealingPair.unseal(sealedItem.data);
 
