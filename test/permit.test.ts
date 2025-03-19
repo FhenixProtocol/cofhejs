@@ -121,7 +121,7 @@ describe("Permit Tests", () => {
     expect(permit._signedDomain).to.deep.eq({
       name: "ACL",
       version: "1",
-      chainId: 420105n,
+      chainId: 420105,
       verifyingContract: "0xa6Ea4b5291d044D93b73b3CFf3109A1128663E8B",
     });
   });

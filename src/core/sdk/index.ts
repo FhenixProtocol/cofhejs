@@ -23,6 +23,7 @@ import {
   UnsealedItem,
   FheUintUTypes,
 } from "../../types";
+import { mockSealOutput } from "./testnet";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -422,6 +423,10 @@ export async function unseal<U extends FheTypes>(
   account?: string,
   permitHash?: string,
 ): Promise<Result<UnsealedItem<U>>> {
+  const initialized = _checkInitialized(_sdkStore.getState());
+  if (!initialized.success)
+    return ResultErr(`${unseal.name} :: ${initialized.error}`);
+
   const resolvedAccount = account ?? _sdkStore.getState().account;
   const resolvedHash =
     permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
@@ -436,6 +441,10 @@ export async function unseal<U extends FheTypes>(
     return ResultErr(
       `unseal :: Permit with account <${account}> and hash <${permitHash}> not found`,
     );
+  }
+
+  if (_sdkStore.getState().isTestnet) {
+    return mockSealOutput(_sdkStore.getState().rpcUrl!, ctHash, utype, permit);
   }
 
   const verifierUrl = _sdkStore.getState().verifierUrl;

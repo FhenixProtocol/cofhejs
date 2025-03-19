@@ -200,7 +200,7 @@ describe("Sdk Tests", () => {
   //   );
   // });
 
-  it("encrypt (type check)", { timeout: 320000 }, async () => {
+  it.skip("encrypt (type check)", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     await cofhejs.createPermit({

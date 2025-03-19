@@ -1,3 +1,5 @@
+import { toHexString } from "./utils";
+
 export function constructZkPoKMetadata(
   accountAddr: string,
   securityZone: number,
@@ -21,12 +23,25 @@ export function constructZkPoKMetadata(
     value = value >>> 8;
   }
 
-  // console.log("chainId", chainId, toHexString(chainIdBytes));
+  console.log(
+    "construct ZkPoK Metadata :: chainId",
+    chainId,
+    toHexString(chainIdBytes),
+  );
+  console.log(
+    "construct ZkPoK Metadata :: account",
+    accountAddr,
+    accountAddrNoPrefix,
+    accountBytes,
+  );
+  console.log("construct ZkPoK Metadata :: securityZone", securityZone);
 
   const metadata = new Uint8Array(1 + accountBytes.length + 32);
   metadata[0] = securityZone;
   metadata.set(accountBytes, 1);
   metadata.set(chainIdBytes, 1 + accountBytes.length);
+
+  console.log("Metadata", metadata);
 
   return metadata;
 }

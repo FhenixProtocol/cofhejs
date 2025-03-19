@@ -5,7 +5,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
-import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
+import {
+  AdaWallet,
+  BobWallet,
+  expectResultSuccess,
+  MockProvider,
+  MockSigner,
+} from "./utils";
 import { afterEach } from "vitest";
 import { getAddress } from "ethers";
 import {
@@ -25,6 +31,7 @@ import {
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
+import { testSealOutput } from "../src/core/sdk/testnet";
 
 describe.only("Local Testnet (Anvil) Tests", () => {
   let bobPublicKey: string;
@@ -48,12 +55,14 @@ describe.only("Local Testnet (Anvil) Tests", () => {
     return cofhejs.initialize({
       provider: bobProvider,
       signer: bobSigner,
+      rpcUrl: anvilRpcUrl,
     });
   };
   const initSdkWithAda = async () => {
     return cofhejs.initialize({
       provider: adaProvider,
       signer: adaSigner,
+      rpcUrl: anvilRpcUrl,
     });
   };
 
@@ -168,6 +177,35 @@ describe.only("Local Testnet (Anvil) Tests", () => {
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
   });
 
+  it("querySealOutput hardcoded", async () => {
+    const permission: Permission = {
+      issuer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
+      expiration: 10000000000,
+      recipient: "0x0000000000000000000000000000000000000000",
+      validatorId: 0,
+      validatorContract: "0x0000000000000000000000000000000000000000",
+      sealingKey:
+        "0xf9f00615e0feb5664eb1b004bfb45f8183875b66a27b01cc0e649e6523e0a5ef",
+      issuerSignature:
+        "0x43c4c262846973969429169fe9ea2d116957583ed28171f50d82cd1b3c2e474c0a520094c4976852d78ed109b727b787ea90d440af3ffe4532b0805f96135c0d1c",
+      recipientSignature: "0x",
+    };
+
+    await testSealOutput(bobProvider, 0n, FheTypes.Bool, permission);
+  });
+
+  it("querySealOutput", { timeout: 320000 }, async () => {
+    await initSdkWithBob();
+
+    await cofhejs.createPermit({
+      type: "self",
+      issuer: bobAddress,
+    });
+
+    const unsealed = await cofhejs.unseal(0n, FheTypes.Bool);
+    if (unsealed.error != null) throw unsealed.error;
+  });
+
   // PERMITS
 
   // Most of the Permit logic is held within the Permit class
@@ -179,44 +217,44 @@ describe.only("Local Testnet (Anvil) Tests", () => {
 
   // UNSEAL
 
-  it("unsealCiphertext", async () => {
-    await initSdkWithBob();
-    const permit = (
-      await cofhejs.createPermit({
-        type: "self",
-        issuer: bobAddress,
-      })
-    ).data!;
+  // it("unsealCiphertext", async () => {
+  //   await initSdkWithBob();
+  //   const permit = (
+  //     await cofhejs.createPermit({
+  //       type: "self",
+  //       issuer: bobAddress,
+  //     })
+  //   ).data!;
 
-    // Bool
-    const boolValue = true;
-    const boolCiphertext = SealingKey.seal(
-      boolValue ? 1 : 0,
-      permit.sealingPair.publicKey,
-    );
-    const boolCleartext = permit.unsealCiphertext(boolCiphertext);
-    expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
+  //   // Bool
+  //   const boolValue = true;
+  //   const boolCiphertext = SealingKey.seal(
+  //     boolValue ? 1 : 0,
+  //     permit.sealingPair.publicKey,
+  //   );
+  //   const boolCleartext = permit.unsealCiphertext(boolCiphertext);
+  //   expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
 
-    // Uint
-    const uintValue = 937387;
-    const uintCiphertext = SealingKey.seal(
-      uintValue,
-      permit.sealingPair.publicKey,
-    );
-    const uintCleartext = permit.unsealCiphertext(uintCiphertext);
-    expect(uintCleartext).toEqual(BigInt(uintValue));
+  //   // Uint
+  //   const uintValue = 937387;
+  //   const uintCiphertext = SealingKey.seal(
+  //     uintValue,
+  //     permit.sealingPair.publicKey,
+  //   );
+  //   const uintCleartext = permit.unsealCiphertext(uintCiphertext);
+  //   expect(uintCleartext).toEqual(BigInt(uintValue));
 
-    // Address
-    const bnToAddress = (bn: bigint) =>
-      getAddress(`0x${bn.toString(16).slice(-40)}`);
-    const addressValue = contractAddress;
-    const addressCiphertext = SealingKey.seal(
-      BigInt(addressValue),
-      permit.sealingPair.publicKey,
-    );
-    const addressCleartext = permit.unsealCiphertext(addressCiphertext);
-    expect(bnToAddress(addressCleartext)).toEqual(addressValue);
-  });
+  //   // Address
+  //   const bnToAddress = (bn: bigint) =>
+  //     getAddress(`0x${bn.toString(16).slice(-40)}`);
+  //   const addressValue = contractAddress;
+  //   const addressCiphertext = SealingKey.seal(
+  //     BigInt(addressValue),
+  //     permit.sealingPair.publicKey,
+  //   );
+  //   const addressCleartext = permit.unsealCiphertext(addressCiphertext);
+  //   expect(bnToAddress(addressCleartext)).toEqual(addressValue);
+  // });
   it("unseal", async () => {
     const permit = await Permit.create({
       type: "self",

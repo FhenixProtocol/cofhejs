@@ -19,6 +19,7 @@ export type InitializationParams = {
   securityZones?: number[];
   coFheUrl?: string;
   verifierUrl?: string;
+  rpcUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;
 };

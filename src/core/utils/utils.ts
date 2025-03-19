@@ -1,3 +1,4 @@
+import { ethers } from "ethers";
 import { isNumber } from "./validation";
 
 export const toBigIntOrThrow = (value: bigint | string): bigint => {
@@ -242,3 +243,11 @@ export const bigintToUint8Array = (bigNum: bigint): Uint8Array => {
 
 export const sleep = async (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+export function uint160ToAddress(uint160: bigint): string {
+  // Convert bigint to hex string and pad to 20 bytes (40 hex chars)
+  const hexStr = uint160.toString(16).padStart(40, "0");
+
+  // Add 0x prefix and convert to checksum address
+  return ethers.getAddress("0x" + hexStr);
+}

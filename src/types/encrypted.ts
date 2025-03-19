@@ -17,10 +17,10 @@ export interface EncryptedUint256 extends EncryptedNumber {}
 export interface EncryptedAddress extends EncryptedNumber {}
 
 export type CoFheInItem = {
+  ctHash: bigint;
   securityZone: number;
-  hash: bigint;
-  signature: string;
   utype: FheTypes;
+  signature: string;
 };
 export type CoFheInBool = CoFheInItem & {
   utype: FheTypes.Bool;

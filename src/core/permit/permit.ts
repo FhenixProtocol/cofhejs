@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ethers, getAddress, id, keccak256, ZeroAddress } from "ethers";
+import {
+  ethers,
+  getAddress,
+  id,
+  JsonRpcProvider,
+  keccak256,
+  ZeroAddress,
+} from "ethers";
 import {
   getSignatureTypesAndMessage,
   PermitSignaturePrimaryType,
@@ -19,14 +26,12 @@ import {
   isSealedAddress,
   isSealedUint,
   AbstractSigner,
-  AbstractProvider,
   EIP712Domain,
 } from "../../types";
 import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils";
 import { ACLEip712DomainFnSig, TaskManagerAddress } from "./consts";
 import { TaskManagerAbiFnSig } from "./consts";
-import { deserializeEIP712Domain, serializeEIP712Domain } from "./utils";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**
@@ -169,7 +174,7 @@ export class Permit implements PermitInterface, PermitMetadata {
         ),
       },
       {
-        _signedDomain: deserializeEIP712Domain(_signedDomain),
+        _signedDomain,
       },
     );
   };
@@ -227,7 +232,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     const { sealingPair, ...permit } = this.getInterface();
     return {
       ...permit,
-      _signedDomain: serializeEIP712Domain(this._signedDomain),
+      _signedDomain: this._signedDomain,
       sealingPair: {
         publicKey: sealingPair.publicKey,
         privateKey: sealingPair.privateKey,
@@ -307,7 +312,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    * @returns {EIP712Domain} - The EIP712 domain for the given chainId
    */
   fetchEIP712Domain = async (
-    provider: AbstractProvider,
+    provider: JsonRpcProvider,
   ): Promise<EIP712Domain> => {
     const aclAddressRaw = await provider.call({
       to: TaskManagerAddress,
@@ -346,7 +351,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     return {
       name,
       version,
-      chainId,
+      chainId: Number(chainId),
       verifyingContract,
     };
   };
@@ -370,9 +375,10 @@ export class Permit implements PermitInterface, PermitMetadata {
    * @param {AbstractProvider} provider - The provider to fetch the EIP712 domain from
    * @returns {boolean} - True if the domain matches, false otherwise
    */
-  checkSignedDomainValid = async (provider: AbstractProvider) => {
+  checkSignedDomainValid = async (provider: JsonRpcProvider) => {
     if (this._signedDomain == null) return false;
     const domain = await this.fetchEIP712Domain(provider);
+    console.log("domain", domain);
     return this.matchesDomain(domain);
   };
 
@@ -396,8 +402,10 @@ export class Permit implements PermitInterface, PermitMetadata {
     if (this.type === "recipient") primaryType = "PermissionedRecipient";
 
     const domain = await this.fetchEIP712Domain(signer.provider);
-
+    console.log("fetched domain", domain);
     const { types, message } = this.getSignatureParams(primaryType);
+
+    console.log("domain", domain, "types", types, "message", message);
 
     const signature = await signer.signTypedData(domain, types, message);
 

@@ -12,7 +12,6 @@ import {
   initializeCore,
   selectActivePermit,
   unseal,
-  unsealCiphertext,
 } from "../core/sdk";
 import { Permit } from "../core/permit";
 import { _sdkStore } from "../core/sdk/store";
