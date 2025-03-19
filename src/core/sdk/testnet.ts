@@ -31,7 +31,7 @@ const mockQueryDecrypterAbi = [
     name: "querySealOutput",
     inputs: [
       { name: "ctHash", type: "uint256", internalType: "uint256" },
-      { name: "hostChainId", type: "uint256", internalType: "uint256" },
+      { name: "", type: "uint256", internalType: "uint256" },
       {
         name: "permission",
         type: "tuple",
@@ -384,25 +384,29 @@ export async function mockSealOutput<U extends FheTypes>(
     return ResultErr("mockSealOutput :: permit domain invalid");
   }
 
-  const mockQueryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
-  const callData = mockQueryDecrypterIface.encodeFunctionData(
-    "querySealOutput",
-    [ctHash, utype, permit.getPermission()],
+  const queryDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
   );
 
-  console.log("Permission", permit.getPermission());
+  const permission = permit.getPermission();
 
-  const result = await provider.call({
-    to: mockQueryDecrypterAddress,
-    data: callData,
-  });
-
-  const [sealed] = ethers.AbiCoder.defaultAbiCoder().decode(
-    ["bytes32"],
-    result,
+  const sealed = await queryDecrypter.querySealOutput(
+    ctHash,
+    utype,
+    permission,
   );
 
-  const unsealed = await permit.unsealCiphertext(sealed);
+  console.log("sealed", sealed);
+
+  const sealedBigInt = BigInt(sealed);
+  const sealingKeyBigInt = BigInt(permission.sealingKey);
+  const unsealed = sealedBigInt ^ sealingKeyBigInt;
+
+  console.log("unsealed", unsealed);
+
+  // const unsealed = await permit.unsealCiphertext(sealed);
 
   if (utype === FheTypes.Bool) {
     return ResultOk(!!unsealed) as Result<UnsealedItem<U>>;

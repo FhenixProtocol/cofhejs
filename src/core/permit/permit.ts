@@ -30,8 +30,11 @@ import {
 } from "../../types";
 import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils";
-import { ACLEip712DomainFnSig, TaskManagerAddress } from "./consts";
-import { TaskManagerAbiFnSig } from "./consts";
+import {
+  ACLEip712DomainFnSig,
+  TaskManagerAbi,
+  TaskManagerAddress,
+} from "./consts";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**
@@ -143,9 +146,10 @@ export class Permit implements PermitInterface, PermitMetadata {
   static async createAndSign(
     options: PermitOptions,
     signer: AbstractSigner | undefined,
+    rpcUrl: string,
   ) {
     const permit = await Permit.create(options);
-    await permit.sign(signer);
+    await permit.sign(signer, rpcUrl);
     return permit;
   }
 
@@ -314,14 +318,14 @@ export class Permit implements PermitInterface, PermitMetadata {
   fetchEIP712Domain = async (
     provider: JsonRpcProvider,
   ): Promise<EIP712Domain> => {
-    const aclAddressRaw = await provider.call({
-      to: TaskManagerAddress,
-      data: TaskManagerAbiFnSig,
-    });
-    const [aclAddress] = ethers.AbiCoder.defaultAbiCoder().decode(
-      ["address"],
-      aclAddressRaw,
+    const taskManager = new ethers.Contract(
+      TaskManagerAddress,
+      TaskManagerAbi,
+      provider,
     );
+    console.log("provider rpc", (await provider.getNetwork()).chainId);
+    const aclAddress = await taskManager.acl();
+    console.log("aclAddress", aclAddress);
 
     const aclEip712DomainRaw = await provider.call({
       to: aclAddress,
@@ -390,7 +394,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    *
    * @param {AbstractSigner} signer - Signer responsible for signing the EIP712 permit signature, throws if undefined
    */
-  sign = async (signer: AbstractSigner | undefined) => {
+  sign = async (signer: AbstractSigner | undefined, rpcUrl: string) => {
     if (signer == null)
       throw new Error(
         "Permit :: sign - signer undefined, you must pass in a `signer` for the connected user to create a permit signature",
@@ -401,13 +405,21 @@ export class Permit implements PermitInterface, PermitMetadata {
     if (this.type === "sharing") primaryType = "PermissionedIssuerShared";
     if (this.type === "recipient") primaryType = "PermissionedRecipient";
 
-    const domain = await this.fetchEIP712Domain(signer.provider);
+    console.log("rpcUrl", rpcUrl);
+
+    const domain = await this.fetchEIP712Domain(
+      new ethers.JsonRpcProvider(rpcUrl),
+    );
     console.log("fetched domain", domain);
     const { types, message } = this.getSignatureParams(primaryType);
 
     console.log("domain", domain, "types", types, "message", message);
 
-    const signature = await signer.signTypedData(domain, types, message);
+    const signature = await signer.signTypedData(
+      { ...domain, chainId: BigInt(domain.chainId) },
+      types,
+      message,
+    );
 
     if (this.type === "self" || this.type === "sharing") {
       this.issuerSignature = signature;

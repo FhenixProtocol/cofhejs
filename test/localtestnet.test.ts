@@ -197,10 +197,14 @@ describe.only("Local Testnet (Anvil) Tests", () => {
   it("querySealOutput", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
-    await cofhejs.createPermit({
-      type: "self",
-      issuer: bobAddress,
-    });
+    const permit = expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
+
+    console.log("permit", permit);
 
     const unsealed = await cofhejs.unseal(0n, FheTypes.Bool);
     if (unsealed.error != null) throw unsealed.error;

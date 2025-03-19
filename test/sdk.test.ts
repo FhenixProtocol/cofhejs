@@ -58,6 +58,7 @@ describe("Sdk Tests", () => {
       signer: bobSigner,
       coFheUrl,
       verifierUrl,
+      rpcUrl,
     });
   };
   const initSdkWithAda = async () => {
@@ -66,6 +67,7 @@ describe("Sdk Tests", () => {
       signer: adaSigner,
       coFheUrl,
       verifierUrl,
+      rpcUrl,
     });
   };
 
@@ -200,7 +202,7 @@ describe("Sdk Tests", () => {
   //   );
   // });
 
-  it.skip("encrypt (type check)", { timeout: 320000 }, async () => {
+  it("encrypt (type check)", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     await cofhejs.createPermit({

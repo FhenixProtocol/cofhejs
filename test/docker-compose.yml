@@ -161,6 +161,8 @@ services:
   zk-verifier:
     image: ghcr.io/fhenixprotocol/zk-verifier
     network_mode: "host"
+    ports:
+      - "3001:3001"
     environment:
       - RUST_LOG=trace
       - CONFIG_PATH=/app/configs/zk_verifier_config.toml

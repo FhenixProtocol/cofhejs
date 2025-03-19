@@ -38,7 +38,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe.skip("Arbitrum Sepolia Tests", () => {
+describe("Arbitrum Sepolia Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -60,6 +60,7 @@ describe.skip("Arbitrum Sepolia Tests", () => {
       signer: bobSigner,
       coFheUrl: ARB_SEPOLIA_COFHE_URL,
       verifierUrl: ARB_SEPOLIA_VERIFIER_URL,
+      rpcUrl: ARB_SEPOLIA_RPC,
     });
   };
   const initSdkWithAda = async () => {
@@ -68,6 +69,7 @@ describe.skip("Arbitrum Sepolia Tests", () => {
       signer: adaSigner,
       coFheUrl: ARB_SEPOLIA_COFHE_URL,
       verifierUrl: ARB_SEPOLIA_VERIFIER_URL,
+      rpcUrl: ARB_SEPOLIA_RPC,
     });
   };
 

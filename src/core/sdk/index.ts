@@ -70,6 +70,7 @@ const _checkInitialized = (
     signer?: boolean;
     coFheUrl?: boolean;
     verifierUrl?: boolean;
+    rpcUrl?: boolean;
   },
 ) => {
   if (
@@ -98,6 +99,11 @@ const _checkInitialized = (
   if (options?.signer !== false && !state.signerInitialized)
     return ResultErr(
       "cofhejs not initialized with a valid signer. Use `cofhejs.initialize(...)` with a valid signer that satisfies `AbstractSigner`.",
+    );
+
+  if (options?.rpcUrl !== false && !state.rpcUrl)
+    return ResultErr(
+      "cofhejs not initialized with a valid rpcUrl. Use `cofhejs.initialize(...)` with a valid rpcUrl.",
     );
 
   return ResultOk(null);
@@ -132,8 +138,13 @@ export const createPermit = async (
 
   let permit: Permit;
   try {
-    permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
+    permit = await Permit.createAndSign(
+      optionsWithDefaults,
+      state.signer,
+      state.rpcUrl!,
+    );
   } catch (e) {
+    console.log("createPermit :: e", e);
     return ResultErr(`${createPermit.name} :: ${e}`);
   }
 
@@ -435,6 +446,9 @@ export async function unseal<U extends FheTypes>(
       `unseal :: Permit hash not provided and active Permit not found`,
     );
   }
+
+  console.log("unseal :: resolvedAccount", resolvedAccount);
+  console.log("unseal :: resolvedHash", resolvedHash);
 
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
