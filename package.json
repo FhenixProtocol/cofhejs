@@ -40,7 +40,9 @@
     "coverage": "pnpm compile && VITE_CJS_IGNORE_WARNING=true vitest run --coverage",
     "test-no-localfhenix": "SKIP_LOCAL_ENV=true VITE_CJS_IGNORE_WARNING=true vitest ",
     "prettier": "prettier --write \"**/*.{js,json,md,sol,ts,yml}\"",
-    "prettier-ci": "prettier --check \"**/*.{js,json,md,sol,ts,yml}\""
+    "prettier-ci": "prettier --check \"**/*.{js,json,md,sol,ts,yml}\"",
+    "test-docker-compose-down": "CONFIG_DIR=./docker/configs KEYS_PATH=./docker/keys docker compose -f test/docker-compose.yml down -v",
+    "test-docker-compose-up": "CONFIG_DIR=./docker/configs KEYS_PATH=./docker/keys docker compose -f test/docker-compose.yml up -d"
   },
   "repository": {
     "type": "git",
