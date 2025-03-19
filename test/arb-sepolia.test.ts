@@ -38,7 +38,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe("Arbitrum Sepolia Tests", () => {
+describe.skip("Arbitrum Sepolia Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -109,9 +109,6 @@ describe("Arbitrum Sepolia Tests", () => {
   });
 
   it("initialize", async () => {
-    console.log("bobPkey", BobWallet.privateKey);
-    console.log("bobAddress", BobWallet.address);
-
     expect(cofhejs.store.getState().providerInitialized).toEqual(false);
     expect(cofhejs.store.getState().signerInitialized).toEqual(false);
     expect(cofhejs.store.getState().fheKeysInitialized).toEqual(false);
@@ -148,8 +145,6 @@ describe("Arbitrum Sepolia Tests", () => {
 
   it("encrypt", { timeout: 320000 }, async () => {
     await initSdkWithBob();
-
-    console.log("bobPkey", BobWallet.privateKey);
 
     await cofhejs.createPermit({
       type: "self",

@@ -13,7 +13,7 @@ type PermitSignatureFieldOption =
   (typeof PermitSignatureAllFields)[number]["name"];
 
 export const SignatureTypes = {
-  PermissionedIssuerSelf: [
+  PermissionedV2IssuerSelf: [
     "issuer",
     "expiration",
     "recipient",
@@ -21,14 +21,14 @@ export const SignatureTypes = {
     "validatorContract",
     "sealingKey",
   ] satisfies PermitSignatureFieldOption[],
-  PermissionedIssuerShared: [
+  PermissionedV2IssuerShared: [
     "issuer",
     "expiration",
     "recipient",
     "validatorId",
     "validatorContract",
   ] satisfies PermitSignatureFieldOption[],
-  PermissionedRecipient: [
+  PermissionedV2Recipient: [
     "sealingKey",
     "issuerSignature",
   ] satisfies PermitSignatureFieldOption[],

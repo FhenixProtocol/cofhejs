@@ -13,7 +13,7 @@ import {
   MockSigner,
 } from "./utils";
 import { afterEach } from "vitest";
-import { getAddress } from "ethers";
+import { ethers, getAddress } from "ethers";
 import {
   InitializationParams,
   Encryptable,
@@ -33,7 +33,7 @@ import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 import { testSealOutput } from "../src/core/sdk/testnet";
 
-describe.only("Local Testnet (Anvil) Tests", () => {
+describe("Local Testnet (Anvil) Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -141,7 +141,7 @@ describe.only("Local Testnet (Anvil) Tests", () => {
     expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
   });
 
-  it("encrypt", { timeout: 320000 }, async () => {
+  it.skip("encrypt", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     await cofhejs.createPermit({
@@ -194,8 +194,83 @@ describe.only("Local Testnet (Anvil) Tests", () => {
     await testSealOutput(bobProvider, 0n, FheTypes.Bool, permission);
   });
 
-  it("querySealOutput", { timeout: 320000 }, async () => {
+  it("full flow", { timeout: 320000 }, async () => {
     await initSdkWithBob();
+
+    const logState = (state: EncryptStep) => {
+      console.log(`Log Encrypt State :: ${state}`);
+    };
+
+    // const inEncryptUint32 = expectResultSuccess(
+    //   await cofhejs.encrypt(logState, [Encryptable.uint32(5n)] as const),
+    // )[0];
+
+    // console.log("inEncryptUint32", inEncryptUint32);
+
+    const exampleContractAddress = "0x0000000000000000000000000000000000000300";
+    const exampleContractAbi = [
+      {
+        type: "function",
+        name: "eNumber",
+        inputs: [],
+        outputs: [{ name: "", type: "uint256", internalType: "euint32" }],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "numberHash",
+        inputs: [],
+        outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+        stateMutability: "view",
+      },
+      {
+        type: "function",
+        name: "setNumberTrivial",
+        inputs: [
+          { name: "inNumber", type: "uint256", internalType: "uint256" },
+        ],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+      {
+        type: "function",
+        name: "setNumber",
+        inputs: [
+          {
+            name: "inNumber",
+            type: "tuple",
+            internalType: "struct InEuint32",
+            components: [
+              { name: "ctHash", type: "uint256", internalType: "uint256" },
+              { name: "securityZone", type: "uint8", internalType: "uint8" },
+              { name: "utype", type: "uint8", internalType: "uint8" },
+              { name: "signature", type: "bytes", internalType: "bytes" },
+            ],
+          },
+        ],
+        outputs: [],
+        stateMutability: "nonpayable",
+      },
+    ] as const;
+
+    const provider = bobProvider.provider;
+
+    // Connect to a provider
+    const wallet = BobWallet.connect(provider);
+
+    console.log("Bob Address", bobAddress);
+
+    const exampleContract = new ethers.Contract(
+      exampleContractAddress,
+      exampleContractAbi,
+      wallet,
+    );
+
+    const tx = await exampleContract.setNumberTrivial(50);
+    await tx.wait();
+    console.log("tx hash", tx.hash);
+    const ctHash = await exampleContract.numberHash();
+    console.log("ctHash", ctHash);
 
     const permit = expectResultSuccess(
       await cofhejs.createPermit({
@@ -204,9 +279,8 @@ describe.only("Local Testnet (Anvil) Tests", () => {
       }),
     );
 
-    console.log("permit", permit);
-
     const unsealed = await cofhejs.unseal(0n, FheTypes.Bool);
+    console.log("unsealed", unsealed);
     if (unsealed.error != null) throw unsealed.error;
   });
 

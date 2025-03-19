@@ -135,3 +135,5 @@ bundle/
 /dist
 /lib
 /test/docker/keys
+
+/test/hardhat-example-sol

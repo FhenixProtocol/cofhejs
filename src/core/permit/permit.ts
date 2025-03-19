@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
+  AbiCoder,
   ethers,
   getAddress,
   id,
   JsonRpcProvider,
   keccak256,
+  TypedDataEncoder,
   ZeroAddress,
 } from "ethers";
 import {
@@ -27,6 +29,8 @@ import {
   isSealedUint,
   AbstractSigner,
   EIP712Domain,
+  EIP712Types,
+  EIP712Message,
 } from "../../types";
 import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils";
@@ -382,8 +386,15 @@ export class Permit implements PermitInterface, PermitMetadata {
   checkSignedDomainValid = async (provider: JsonRpcProvider) => {
     if (this._signedDomain == null) return false;
     const domain = await this.fetchEIP712Domain(provider);
-    console.log("domain", domain);
     return this.matchesDomain(domain);
+  };
+
+  testHashDomain = async (
+    domain: EIP712Domain,
+    types: EIP712Types,
+    message: EIP712Message,
+  ) => {
+    const hash = TypedDataEncoder.hash(domain, types, message);
   };
 
   /**
@@ -400,23 +411,22 @@ export class Permit implements PermitInterface, PermitMetadata {
         "Permit :: sign - signer undefined, you must pass in a `signer` for the connected user to create a permit signature",
       );
 
-    let primaryType: PermitSignaturePrimaryType = "PermissionedIssuerSelf";
-    if (this.type === "self") primaryType = "PermissionedIssuerSelf";
-    if (this.type === "sharing") primaryType = "PermissionedIssuerShared";
-    if (this.type === "recipient") primaryType = "PermissionedRecipient";
+    let primaryType: PermitSignaturePrimaryType = "PermissionedV2IssuerSelf";
+    if (this.type === "self") primaryType = "PermissionedV2IssuerSelf";
+    if (this.type === "sharing") primaryType = "PermissionedV2IssuerShared";
+    if (this.type === "recipient") primaryType = "PermissionedV2Recipient";
 
     console.log("rpcUrl", rpcUrl);
 
     const domain = await this.fetchEIP712Domain(
       new ethers.JsonRpcProvider(rpcUrl),
     );
-    console.log("fetched domain", domain);
     const { types, message } = this.getSignatureParams(primaryType);
 
-    console.log("domain", domain, "types", types, "message", message);
+    await this.testHashDomain(domain, types, message);
 
     const signature = await signer.signTypedData(
-      { ...domain, chainId: BigInt(domain.chainId) },
+      { ...domain, chainId: domain.chainId },
       types,
       message,
     );

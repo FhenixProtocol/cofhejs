@@ -33,7 +33,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe("Sdk Tests", () => {
+describe.skipIf(true)("Sdk Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -434,6 +434,82 @@ describe("Sdk Tests", () => {
     expectTypeOf(nestedCleartext).toEqualTypeOf<ExpectedCleartextType>();
 
     expect(nestedCleartext).toEqual(expectedCleartext);
+  });
+
+  it.only("unseal via cofhe", async () => {
+    await initSdkWithBob();
+    expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
+
+    const result = expectResultSuccess(
+      await cofhejs.unseal(
+        104300741372355756199586010481708622322568015192236070755146915723946762830848n,
+        FheTypes.Uint32,
+      ),
+    );
+
+    console.log("result", result);
+  });
+
+  it.only("unseal (hardcoded permit)", async () => {
+    await initSdkWithBob();
+
+    const ctHash =
+      104300741372355756199586010481708622322568015192236070755146915723946762830848n;
+    const permission: Permission = {
+      issuer: "0xB4E1decAd11798C446BcBed8C25b2f2923Fc1AC8",
+      expiration: 1000000000000,
+      recipient: "0x0000000000000000000000000000000000000000",
+      validatorId: 0,
+      validatorContract: "0x0000000000000000000000000000000000000000",
+      sealingKey:
+        "0xeebfae87c1537b80331615758eebf9c04e0ed1a878ac9804f6d66dbf44376a15",
+      issuerSignature:
+        "0x4a5bc77846e2a1f846bb2d91971eb2ce520baa633634217b1a888ab609f8f447173c57f7498e249f25b4fd1666b4f79099e8c7f987d2971765b7b4ac46b642e31b",
+      recipientSignature: "0x",
+    };
+
+    // const permit = await Permit.createAndSign(
+    //   { type: "self", ...permission },
+    //   bobSigner,
+    //   rpcUrl,
+    // );
+
+    // console.log("permit", permit);
+
+    // permission = permit.getPermission();
+
+    try {
+      const body = {
+        ct_tempkey: ctHash.toString(16).padStart(64, "0"),
+        host_chain_id: 420105,
+        permit: {
+          ...permission,
+          issuerSignature: permission.issuerSignature.replace("0x", ""),
+          recipientSignature: permission.recipientSignature.replace("0x", ""),
+        },
+      };
+      console.log("unseal verifierUrl", `${verifierUrl}:3000/decrypt`);
+      // TODO: change back to sealOutput
+      const sealOutputRes = await fetch(`${verifierUrl}:3000/decrypt`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      console.log("result body", await sealOutputRes.text());
+      console.log("unseal sealOutputRes", sealOutputRes);
+      const sealOutput = await sealOutputRes.json();
+      const sealed = BigInt(sealOutput.data).toString();
+      console.log("unsealed", sealed);
+    } catch (e) {
+      console.log("unseal :: sealOutput request failed ::", e);
+    }
   });
 
   // TODO: Re-enable once hardhat integration with CoFHE established

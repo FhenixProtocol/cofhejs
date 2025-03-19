@@ -142,10 +142,6 @@ export const zkVerify = async (
     chain_id: parseInt(chainId),
   };
 
-  console.log("zkVerify :: account_addr", payload.account_addr);
-  console.log("zkVerify :: security_zone", payload.security_zone);
-  console.log("zkVerify :: chain_id", payload.chain_id);
-
   const body = JSON.stringify(payload);
 
   // Send request to verification server
