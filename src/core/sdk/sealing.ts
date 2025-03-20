@@ -21,6 +21,12 @@ export type EthEncryptedData = {
   ciphertext: string;
 };
 
+export type EthEncryptedData2 = {
+  data: Uint8Array;
+  public_key: Uint8Array;
+  nonce: Uint8Array;  
+};
+
 /**
  * A class representing a SealingKey which provides cryptographic sealing (encryption)
  * and unsealing (decryption) capabilities.
@@ -103,6 +109,45 @@ export class SealingKey {
 
     return toBigInt(decryptedMessage);
   };
+
+  unseal2 = (parsedData: EthEncryptedData2): bigint => {
+    
+    // Ensure all parameters are Uint8Array
+    const nonce = parsedData.nonce instanceof Uint8Array 
+      ? parsedData.nonce 
+      : new Uint8Array(parsedData.nonce);
+      
+    const ephemPublicKey = parsedData.public_key instanceof Uint8Array 
+      ? parsedData.public_key 
+      : new Uint8Array(parsedData.public_key);
+      
+    const dataToDecrypt = parsedData.data instanceof Uint8Array 
+      ? parsedData.data 
+      : new Uint8Array(parsedData.data);
+    
+    // Make sure the private key is also a Uint8Array
+    const privateKeyBytes = fromHexString(this.privateKey);
+    
+    // Debug information
+    console.log("nonce length:", nonce.length);
+    console.log("ephemPublicKey length:", ephemPublicKey.length);
+    console.log("privateKeyBytes length:", privateKeyBytes.length);
+    console.log("dataToDecrypt length:", dataToDecrypt.length);
+    
+    // call the nacl box function to decrypt the data
+    const decryptedMessage = nacl.box.open(
+      dataToDecrypt,
+      nonce,
+      ephemPublicKey,
+      privateKeyBytes
+    );
+
+    if (!decryptedMessage) {
+      throw new Error("Failed to decrypt message");
+    }
+
+    return toBigInt(decryptedMessage);
+  };  
 
   /**
    * Seals (encrypts) the provided message for a receiver with the specified public key.

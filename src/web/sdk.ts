@@ -116,7 +116,7 @@ async function encrypt<T extends any[]>(
 
   const inItems: CoFheInItem[] = zkVerifyRes.data.map(
     ({ ct_hash, signature }, index) => ({
-      hash: BigInt(ct_hash),
+      ctHash: BigInt(ct_hash),
       securityZone,
       utype: encryptableItems[index].utype,
       signature,
@@ -150,6 +150,6 @@ export const cofhejs = {
 
   encrypt,
 
-  unsealCiphertext,
+  //unsealCiphertext,
   unseal,
 };

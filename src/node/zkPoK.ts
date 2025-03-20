@@ -146,7 +146,7 @@ export const zkVerify = async (
 
   // Send request to verification server
   try {
-    const response = await fetch(`${verifierUrl}:3001/verify`, {
+    const response = await fetch(`${verifierUrl}:4000/verify`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

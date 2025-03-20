@@ -24,7 +24,7 @@ import {
   FheUintUTypes,
 } from "../../types";
 import { mockSealOutput } from "./testnet";
-import { toHexString } from "../utils";
+//import { toHexString } from "../utils";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -466,30 +466,34 @@ export async function unseal<U extends FheTypes>(
   if (verifierUrl == null)
     return ResultErr("unseal :: verifierUrl not initialized");
 
-  let sealed: string | undefined;
+  let sealed: string | Uint8Array | undefined;
+
   try {
     const body = {
       ct_tempkey: ctHash.toString(16).padStart(64, "0"),
       host_chain_id: Number(_sdkStore.getState().chainId),
       permit: permit.getPermission(),
     };
-    console.log("unseal body", JSON.stringify(body));
-    console.log("unseal verifierUrl", `${verifierUrl}:3000/decrypt`);
+    console.log("unseal verifierUrl", `${verifierUrl}:3000/sealoutput`);
     // TODO: change back to sealOutput
-    const sealOutputRes = await fetch(`${verifierUrl}:3000/decrypt`, {
+    const sealOutputRes = await fetch(`${verifierUrl}:3000/sealoutput`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
     });
-    console.log("result body", await sealOutputRes.text());
-    console.log("unseal sealOutputRes", sealOutputRes);
+
+
     const sealOutput = await sealOutputRes.json();
-    sealed = BigInt(sealOutput.data).toString();
+    sealed = sealOutput.sealed; //uint8ArrayToString(sealOutput.sealed.data);
   } catch (e) {
     console.log("unseal :: sealOutput request failed ::", e);
     return ResultErr(`unseal :: sealOutput request failed :: ${e}`);
+  }
+
+  if (sealed == null) {
+    return ResultErr("unseal :: sealed data not found");
   }
 
   if (utype === FheTypes.Bool) {

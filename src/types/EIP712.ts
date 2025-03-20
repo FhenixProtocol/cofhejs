@@ -13,3 +13,10 @@ export type EIP712 = {
   primaryType: string;
   types: EIP712Types;
 };
+
+export interface SerializedEIP712Domain {
+  name: string;
+  version: string;
+  chainId: string; // Note: serialized as string
+  verifyingContract: string;
+}

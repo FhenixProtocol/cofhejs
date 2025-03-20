@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  AbiCoder,
+  //AbiCoder,
   ethers,
   getAddress,
   id,
@@ -32,7 +32,7 @@ import {
   EIP712Types,
   EIP712Message,
 } from "../../types";
-import { GenerateSealingKey, SealingKey } from "../sdk/sealing";
+import { EthEncryptedData2, GenerateSealingKey, SealingKey } from "../sdk/sealing";
 import { chainIsHardhat, hardhatMockUnseal } from "../utils";
 import {
   ACLEip712DomainFnSig,
@@ -395,6 +395,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     message: EIP712Message,
   ) => {
     const hash = TypedDataEncoder.hash(domain, types, message);
+    console.log("hash", hash);
   };
 
   /**
@@ -445,12 +446,13 @@ export class Permit implements PermitInterface, PermitMetadata {
    * Use the privateKey of `permit.sealingPair` to unseal `ciphertext` returned from the Fhenix chain.
    * Useful when not using `SealedItem` structs and need to unseal an individual ciphertext.
    */
-  unsealCiphertext = (ciphertext: string): bigint => {
+  unsealCiphertext = (ciphertext: string | Uint8Array | EthEncryptedData2): bigint => {
     // Early exit with mock unseal if interacting with hardhat network
     if (chainIsHardhat(this._signedDomain?.chainId))
-      return hardhatMockUnseal(ciphertext);
+      return hardhatMockUnseal(ciphertext as string);
 
-    return this.sealingPair.unseal(ciphertext);
+    //return this.sealingPair.unseal(ciphertext);
+    return this.sealingPair.unseal2(ciphertext as EthEncryptedData2);
   };
 
   /**

@@ -1,5 +1,7 @@
+/* eslint-disable */
+
 import { SealingKey } from "../core/sdk/sealing";
-import { EIP712Domain, SerializedEIP712Domain } from "./EIP712";
+import { EIP712Domain } from "./EIP712";
 
 /**
  * Type representing the full Permit
@@ -111,7 +113,7 @@ export type PermitOptions =
     >;
 
 export type SerializedPermitMetadata = Omit<PermitMetadata, "_signedDomain"> & {
-  _signedDomain: SerializedEIP712Domain | undefined;
+  _signedDomain: any | undefined;
 };
 
 export type SerializedPermit = Omit<PermitInterface, "sealingPair"> &

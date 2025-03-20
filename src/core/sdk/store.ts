@@ -162,7 +162,7 @@ export const _store_initialize = async (params: InitializationParams) => {
   // Verify signer address is registered with verifier
   if (verifierUrl != null) {
     try {
-      const response = await fetch(`${verifierUrl}:3001/signerAddress`, {
+      const response = await fetch(`${verifierUrl}:4000/signerAddress`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
