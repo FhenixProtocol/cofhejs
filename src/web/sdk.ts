@@ -27,6 +27,8 @@ import {
 import { initTfhe } from "./init";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
 import { mockEncrypt } from "../core/sdk/testnet";
+import { applyEnvironmentDefaults } from "../utils/environment";
+import { Environment } from "../types";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -40,11 +42,15 @@ export const initialize = async (
   > & {
     ignoreErrors?: boolean;
     generatePermit?: boolean;
+    environment?: Environment;
   },
 ): Promise<Result<Permit | undefined>> => {
+  // Apply environment-specific defaults if environment is provided
+  const processedParams = applyEnvironmentDefaults(params);
+
   // Initialize the fhevm
   await initTfhe().catch((err: unknown) => {
-    if (params.ignoreErrors) {
+    if (processedParams.ignoreErrors) {
       return undefined;
     } else {
       return ResultErr(
@@ -53,13 +59,19 @@ export const initialize = async (
     }
   });
 
+  // Make sure we're passing all required properties to initializeCore
+  if (!processedParams.provider) {
+    return ResultErr("initialize :: provider is required");
+  }
+
   return initializeCore({
-    ...params,
+    ...processedParams,
     tfhePublicKeySerializer: (buff: Uint8Array) => {
       return TfheCompactPublicKey.deserialize(buff);
     },
-    compactPkeCrsSerializer: (buff: Uint8Array) =>
-      CompactPkeCrs.deserialize(buff),
+    compactPkeCrsSerializer: (buff: Uint8Array) => {
+      return CompactPkeCrs.deserialize(buff);
+    },
   });
 };
 
