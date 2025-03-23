@@ -24,7 +24,8 @@ import {
   FheUintUTypes,
 } from "../../types";
 import { mockSealOutput } from "./testnet";
-//import { toHexString } from "../utils";
+//import { toHexString } from "../utils"; 
+import { toBigInt } from "../utils";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -71,6 +72,7 @@ const _checkInitialized = (
     signer?: boolean;
     coFheUrl?: boolean;
     verifierUrl?: boolean;
+    thresholdNetworkUrl?: boolean;
     rpcUrl?: boolean;
   },
 ) => {
@@ -90,6 +92,11 @@ const _checkInitialized = (
   if (!state.isTestnet && options?.verifierUrl !== false && !state.verifierUrl)
     return ResultErr(
       "cofhejs not initialized with a verifierUrl. Set `verifierUrl` in `cofhejs.initialize`.",
+    );
+
+  if (!state.isTestnet && options?.thresholdNetworkUrl !== false && !state.thresholdNetworkUrl)
+    return ResultErr(
+      "cofhejs not initialized with a thresholdNetworkUrl. Set `thresholdNetworkUrl` in `cofhejs.initialize`.",
     );
 
   if (options?.provider !== false && !state.providerInitialized)
@@ -314,6 +321,7 @@ export function encryptGetKeys(): Result<{
   crs: Uint8Array;
   coFheUrl: string;
   verifierUrl: string;
+  thresholdNetworkUrl: string;
   account: string;
   chainId: string;
 }> {
@@ -347,11 +355,16 @@ export function encryptGetKeys(): Result<{
   if (verifierUrl == null)
     return ResultErr("encrypt :: verifierUrl not initialized");
 
+  const thresholdNetworkUrl = state.thresholdNetworkUrl;
+  if (thresholdNetworkUrl == null)
+    return ResultErr("encrypt :: thresholdNetworkUrl not initialized");
+
   return ResultOk({
     fhePublicKey,
     crs,
     coFheUrl,
     verifierUrl,
+    thresholdNetworkUrl,
     account: state.account,
     chainId: state.chainId,
   });
@@ -462,9 +475,9 @@ export async function unseal<U extends FheTypes>(
     return mockSealOutput(_sdkStore.getState().rpcUrl!, ctHash, utype, permit);
   }
 
-  const verifierUrl = _sdkStore.getState().verifierUrl;
-  if (verifierUrl == null)
-    return ResultErr("unseal :: verifierUrl not initialized");
+  const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl;
+  if (thresholdNetworkUrl == null)
+    return ResultErr("unseal :: thresholdNetworkUrl not initialized");
 
   let sealed: string | Uint8Array | undefined;
 
@@ -474,9 +487,8 @@ export async function unseal<U extends FheTypes>(
       host_chain_id: Number(_sdkStore.getState().chainId),
       permit: permit.getPermission(),
     };
-    console.log("unseal verifierUrl", `${verifierUrl}:3000/sealoutput`);
-    // TODO: change back to sealOutput
-    const sealOutputRes = await fetch(`${verifierUrl}:3000/sealoutput`, {
+    console.log("unseal thresholdNetworkUrl", `${thresholdNetworkUrl}/sealoutput`);
+    const sealOutputRes = await fetch(`${thresholdNetworkUrl}/sealoutput`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -505,4 +517,73 @@ export async function unseal<U extends FheTypes>(
   } else {
     return ResultErr(`unseal :: invalid utype :: ${utype}`);
   }
+}
+
+export async function decrypt(
+  ctHash: bigint,
+  account?: string,
+  permitHash?: string,
+): Promise<Result<string>> {
+  const initialized = _checkInitialized(_sdkStore.getState());
+  if (!initialized.success)
+    return ResultErr(`${decrypt.name} :: ${initialized.error}`);
+
+  const resolvedAccount = account ?? _sdkStore.getState().account;
+  const resolvedHash =
+    permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
+  if (resolvedAccount == null || resolvedHash == null) {
+    return ResultErr(
+      `decrypt :: Permit hash not provided and active Permit not found`,
+    );
+  }
+
+  console.log("decrypt :: resolvedAccount", resolvedAccount);
+  console.log("decrypt :: resolvedHash", resolvedHash);
+
+  const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
+  if (permit == null) {
+    return ResultErr(
+      `decrypt :: Permit with account <${account}> and hash <${permitHash}> not found`,
+    );
+  }
+
+  // if (_sdkStore.getState().isTestnet) {
+  //   return mockSealOutput(_sdkStore.getState().rpcUrl!, ctHash, utype, permit);
+  // }
+
+  const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl;
+  if (thresholdNetworkUrl == null)
+    return ResultErr("decrypt :: thresholdNetworkUrl not initialized");
+
+  let decrypted: string | Uint8Array | undefined;
+
+  try {
+    const body = {
+      ct_tempkey: ctHash.toString(16).padStart(64, "0"),
+      host_chain_id: Number(_sdkStore.getState().chainId),
+      permit: permit.getPermission(),
+    };
+    console.log("decrypt thresholdNetworkUrl", `${thresholdNetworkUrl}/decrypt`);
+    const decryptOtputRes = await fetch(`${thresholdNetworkUrl}/decrypt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const decryptOutput = await decryptOtputRes.json();
+    decrypted = toBigInt(decryptOutput.data).toString(); //uint8ArrayToString(sealOutput.sealed.data);
+
+    if (decrypted == null) {
+      return ResultErr("decrypt :: decrypted data not found");
+    } 
+
+    return ResultOk(decrypted);
+
+  } catch (e) {
+    console.log("decrypt :: decrypt request failed ::", e);
+    return ResultErr(`decrypt :: decrypt request failed :: ${e}`);
+  }
+
 }
