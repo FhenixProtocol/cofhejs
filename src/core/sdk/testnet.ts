@@ -8,7 +8,6 @@ import {
   Encrypted_Inputs,
   EncryptStep,
   FheTypes,
-  FheUintUTypes,
   Permission,
   Result,
   ResultErr,
@@ -16,9 +15,10 @@ import {
   UnsealedItem,
   VerifyResult,
 } from "../../types";
-import { sleep, uint160ToAddress } from "../utils";
+import { sleep } from "../utils";
 import { _sdkStore } from "./store";
 import { Permit } from "../permit";
+import { convertViaUtype, isValidUtype } from "../utils/utype";
 
 const mockZkVerifierAddress = "0x0000000000000000000000000000000000000100";
 const mockQueryDecrypterAddress = "0x0000000000000000000000000000000000000200";
@@ -518,17 +518,61 @@ export async function mockSealOutput<U extends FheTypes>(
   const sealingKeyBigInt = BigInt(permission.sealingKey);
   const unsealed = sealedBigInt ^ sealingKeyBigInt;
 
-  console.log("unsealed", unsealed);
+  console.log("mock unsealed", unsealed);
 
-  // const unsealed = await permit.unsealCiphertext(sealed);
-
-  if (utype === FheTypes.Bool) {
-    return ResultOk(!!unsealed) as Result<UnsealedItem<U>>;
-  } else if (utype === FheTypes.Uint160) {
-    return ResultOk(uint160ToAddress(unsealed)) as Result<UnsealedItem<U>>;
-  } else if (utype == null || FheUintUTypes.includes(utype as number)) {
-    return ResultOk(unsealed) as Result<UnsealedItem<U>>;
-  } else {
+  if (!isValidUtype(utype)) {
     return ResultErr(`mockSealOutput :: invalid utype :: ${utype}`);
   }
+
+  return ResultOk(convertViaUtype(utype, unsealed)) as Result<UnsealedItem<U>>;
+}
+
+export async function mockDecrypt<U extends FheTypes>(
+  rpcUrl: string,
+  ctHash: bigint,
+  utype: U,
+  permit: Permit,
+): Promise<Result<UnsealedItem<U>>> {
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+  const domainValid = await permit.checkSignedDomainValid(provider);
+  if (!domainValid) {
+    return ResultErr("mockDecrypt :: permit domain invalid");
+  }
+
+  const queryDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
+  );
+
+  const permission = permit.getPermission();
+
+  const decryptResult = await queryDecrypter.queryDecrypt(
+    ctHash,
+    utype,
+    permission,
+  );
+
+  const {
+    allowed,
+    error,
+    result,
+  }: { allowed: boolean; error: string; result: string } = decryptResult;
+
+  console.log("decryptResult", allowed, error, result);
+
+  if (error != null) {
+    return ResultErr(`mockDecrypt :: queryDecrypt onchain error - ${error}`);
+  }
+
+  const resultBigInt = BigInt(result);
+
+  if (!isValidUtype(utype)) {
+    return ResultErr(`mockDecrypt :: invalid utype :: ${utype}`);
+  }
+
+  return ResultOk(convertViaUtype(utype, resultBigInt)) as Result<
+    UnsealedItem<U>
+  >;
 }
