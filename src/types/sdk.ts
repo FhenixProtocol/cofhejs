@@ -13,12 +13,15 @@ export interface AbstractSigner {
   provider: AbstractProvider;
 }
 
+export type Environment = "MOCK" | "LOCAL" | "TESTNET" | "MAINNET";
+
 export type InitializationParams = {
   provider: AbstractProvider;
   signer?: AbstractSigner;
   securityZones?: number[];
   coFheUrl?: string;
   verifierUrl?: string;
+  thresholdNetworkUrl?: string;
   rpcUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;

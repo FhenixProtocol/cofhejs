@@ -18,7 +18,7 @@ volumes:
 # Define a template for party member services
 x-party-member-template: &party-member-template
   build: .
-  image: ghcr.io/fhenixprotocol/threshold-network
+  image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
   network_mode: "host"
   restart: unless-stopped
   command: partymember-service
@@ -33,7 +33,7 @@ x-party-member-template: &party-member-template
 
 services:
   preprocessor:
-    image: ghcr.io/fhenixprotocol/threshold-network
+    image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
     container_name: preprocessor
     command: >
       sh -c "
@@ -105,7 +105,7 @@ services:
 
   coordinator:
     build: .
-    image: ghcr.io/fhenixprotocol/threshold-network
+    image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
     container_name: coordinator
     network_mode: "host"
     ports:
@@ -120,7 +120,7 @@ services:
 
   dispatcher:
     build: .
-    image: ghcr.io/fhenixprotocol/threshold-network
+    image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
     container_name: dispatcher
     network_mode: "host"
     ports:

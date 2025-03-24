@@ -19,19 +19,16 @@ import {
   InitializationParams,
   Encryptable,
   Permission,
-  SealedBool,
-  SealedUint,
-  SealedAddress,
   CoFheInUint64,
   CoFheInAddress,
   CoFheInBool,
   CoFheInUint8,
-  Result,
   FheTypes,
   EncryptStep,
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
+import { bytesToBigInt } from "../src/core/utils";
 
 describe("Sdk Tests", () => {
   let bobPublicKey: string;
@@ -50,24 +47,21 @@ describe("Sdk Tests", () => {
   const uniswapProjectId = "UNISWAP";
   const rpcUrl = "http://127.0.0.1:42069";
   const coFheUrl = "http://127.0.0.1";
-  const verifierUrl = "http://127.0.0.1";
+  const verifierUrl = "http://127.0.0.1:3001";
+  const thresholdNetworkUrl = "http://127.0.0.1:3000";
 
   const initSdkWithBob = async () => {
     return cofhejs.initialize({
       provider: bobProvider,
       signer: bobSigner,
-      coFheUrl,
-      verifierUrl,
-      rpcUrl,
+      environment: "LOCAL",
     });
   };
   const initSdkWithAda = async () => {
     return cofhejs.initialize({
       provider: adaProvider,
       signer: adaSigner,
-      coFheUrl,
-      verifierUrl,
-      rpcUrl,
+      environment: "LOCAL",
     });
   };
 
@@ -111,7 +105,7 @@ describe("Sdk Tests", () => {
         target: "node",
         // provider: bobProvider,
         // signer: bobSigner,
-        coFheUrl,
+        environment: "LOCAL",
       } as unknown as InitializationParams),
       "initialize :: missing provider - Please provide an AbstractProvider interface",
     );
@@ -122,7 +116,7 @@ describe("Sdk Tests", () => {
         provider: bobProvider,
         signer: bobSigner,
         securityZones: [],
-        coFheUrl,
+        environment: "LOCAL",
       } as unknown as InitializationParams),
       "initialize :: a list of securityZones was provided, but it is empty",
     );
@@ -355,7 +349,7 @@ describe("Sdk Tests", () => {
 
   // UNSEAL
 
-  it("unsealCiphertext", async () => {
+  it("unseal", async () => {
     await initSdkWithBob();
     const permit = expectResultSuccess(
       await cofhejs.createPermit({
@@ -366,74 +360,29 @@ describe("Sdk Tests", () => {
 
     // Bool
     const boolValue = true;
-    const boolCiphertext = SealingKey.seal(
+    const boolSealed = SealingKey.seal(
       boolValue ? 1 : 0,
       permit.sealingPair.publicKey,
     );
-    const boolCleartext = permit.unsealCiphertext(boolCiphertext);
+    const boolCleartext = permit.unseal(boolSealed);
     expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
 
     // Uint
     const uintValue = 937387;
-    const uintCiphertext = SealingKey.seal(
-      uintValue,
-      permit.sealingPair.publicKey,
-    );
-    const uintCleartext = permit.unsealCiphertext(uintCiphertext);
+    const uintSealed = SealingKey.seal(uintValue, permit.sealingPair.publicKey);
+    const uintCleartext = permit.unseal(uintSealed);
     expect(uintCleartext).toEqual(BigInt(uintValue));
 
     // Address
     const bnToAddress = (bn: bigint) =>
       getAddress(`0x${bn.toString(16).slice(-40)}`);
     const addressValue = contractAddress;
-    const addressCiphertext = SealingKey.seal(
+    const addressSealed = SealingKey.seal(
       BigInt(addressValue),
       permit.sealingPair.publicKey,
     );
-    const addressCleartext = permit.unsealCiphertext(addressCiphertext);
+    const addressCleartext = permit.unseal(addressSealed);
     expect(bnToAddress(addressCleartext)).toEqual(addressValue);
-  });
-  it("unseal", async () => {
-    const permit = await Permit.create({
-      type: "self",
-      issuer: bobAddress,
-    });
-
-    // Bool
-    const boolValue = true;
-    const boolCipherStruct: SealedBool = {
-      data: SealingKey.seal(boolValue ? 1 : 0, permit.sealingPair.publicKey),
-      utype: FheTypes.Bool,
-    };
-
-    // Uint
-    const uintValue = 937387n;
-    const uintCipherStruct: SealedUint = {
-      data: SealingKey.seal(uintValue, permit.sealingPair.publicKey),
-      utype: FheTypes.Uint64,
-    };
-
-    // Address
-    const addressValue = contractAddress;
-    const addressCipherStruct: SealedAddress = {
-      data: SealingKey.seal(BigInt(addressValue), permit.sealingPair.publicKey),
-      utype: FheTypes.Uint160,
-    };
-
-    // Array - Nested
-    const nestedCleartext = permit.unseal([
-      boolCipherStruct,
-      uintCipherStruct,
-      addressCipherStruct,
-    ] as const);
-
-    type ExpectedCleartextType = readonly [boolean, bigint, string];
-
-    const expectedCleartext = [boolValue, uintValue, addressValue];
-
-    expectTypeOf(nestedCleartext).toEqualTypeOf<ExpectedCleartextType>();
-
-    expect(nestedCleartext).toEqual(expectedCleartext);
   });
 
   it("unseal via cofhe", async () => {
@@ -493,75 +442,45 @@ describe("Sdk Tests", () => {
           recipientSignature: permission.recipientSignature.replace("0x", ""),
         },
       };
-      console.log("unseal verifierUrl", `${verifierUrl}:3000/decrypt`);
-      // TODO: change back to sealOutput
-      const sealOutputRes = await fetch(`${verifierUrl}:3000/decrypt`, {
+      const decryptRes = await fetch(`${thresholdNetworkUrl}/decrypt`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
       });
-      console.log("result body", await sealOutputRes.text());
-      console.log("unseal sealOutputRes", sealOutputRes);
-      const sealOutput = await sealOutputRes.json();
-      const sealed = BigInt(sealOutput.data).toString();
-      console.log("unsealed", sealed);
+      const { decrypted } = await decryptRes.json();
+      console.log({ decrypted });
+      const unsealed = bytesToBigInt(decrypted);
+      console.log("unsealed", unsealed);
+    } catch (e) {
+      console.log("unseal :: decrypt request failed ::", e);
+    }
+
+    try {
+      const body = {
+        ct_tempkey: ctHash.toString(16).padStart(64, "0"),
+        host_chain_id: 420105,
+        permit: {
+          ...permission,
+          issuerSignature: permission.issuerSignature.replace("0x", ""),
+          recipientSignature: permission.recipientSignature.replace("0x", ""),
+        },
+      };
+      const sealOutputRes = await fetch(`${thresholdNetworkUrl}/sealoutput`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      console.log("unseal sealOutputRes", await sealOutputRes.text());
+      // const sealOutput = await sealOutputRes.json();
+      // console.log("sealed output", sealOutput);
+      // const sealed = BigInt(sealOutput.data).toString();
+      // console.log("unsealed", sealed);
     } catch (e) {
       console.log("unseal :: sealOutput request failed ::", e);
     }
   });
-
-  // TODO: Re-enable once hardhat integration with CoFHE established
-  // it("hardhat encrypt/unseal", async () => {
-  //   const hardhatChainId = "31337";
-
-  //   bobProvider = new MockProvider(bobPublicKey, BobWallet, hardhatChainId);
-  //   bobSigner = await bobProvider.getSigner();
-
-  //   // Should initialize correctly, but fhe public key for hardhat not set
-  //   await cofhejs.initialize({
-  //     provider: bobProvider,
-  //     signer: bobSigner,
-  //   });
-  //   await cofhejs.createPermit();
-
-  //   // Chain id set to hardhat Chain id
-  //   expect(cofhejs.store.getState().chainId).toEqual(hardhatChainId);
-  //   expect(cofhejs.store.getState().fheKeys).toEqual({});
-
-  //   // `unsealCiphertext`
-
-  //   // const encryptedValue = cofhejs.encryptValue(5, EncryptionTypes.uint8);
-  //   // const unsealedValue = cofhejs.unsealCiphertext(
-  //   //   uint8ArrayToString(encryptedValue.data!.data),
-  //   // );
-  //   // expect(unsealedValue.error).toEqual(null);
-  //   // expect(unsealedValue.data).toEqual(5n);
-
-  //   // `unseal`
-
-  //   const intValue = 5;
-  //   const boolValue = false;
-
-  //   const encryptResult = (
-  //     await cofhejs.encrypt([
-  //       Encryptable.uint8(intValue),
-  //       Encryptable.bool(boolValue),
-  //     ])
-  //   );
-  //   expect(encryptResult.success).to.equal(true)
-  //   if (!encryptResult.success) return;
-
-  //   const [ encryptedInt, encryptedBool ] = encryptResult.data
-
-  //   const sealed = [
-  //     { data: uint8ArrayToString(encryptedInt), utype: FheUType.uint8 },
-  //     { data: uint8ArrayToString(encryptedBool), utype: FheUType.bool },
-  //   ];
-
-  //   const [unsealedInt, unsealedBool] = cofhejs.unseal(sealed).data!;
-  //   expect(unsealedInt).to.eq(BigInt(intValue));
-  //   expect(unsealedBool).to.eq(boolValue);
-  // });
 });

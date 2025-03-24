@@ -65,6 +65,7 @@ export type SdkStore = SdkStoreProviderInitialization &
 
     coFheUrl: string | undefined;
     verifierUrl: string | undefined;
+    thresholdNetworkUrl: string | undefined;
     rpcUrl: string | undefined;
   };
 
@@ -77,6 +78,7 @@ export const _sdkStore = createStore<SdkStore>(
 
       coFheUrl: undefined,
       verifierUrl: undefined,
+      thresholdNetworkUrl: undefined,
       rpcUrl: undefined,
       providerInitialized: false,
       provider: undefined as never,
@@ -137,6 +139,7 @@ export const _store_initialize = async (params: InitializationParams) => {
     coFheUrl,
     verifierUrl,
     rpcUrl,
+    thresholdNetworkUrl,
   } = params;
 
   _sdkStore.setState({
@@ -145,6 +148,7 @@ export const _store_initialize = async (params: InitializationParams) => {
     coFheUrl,
     verifierUrl,
     rpcUrl,
+    thresholdNetworkUrl,
   });
 
   // PROVIDER
@@ -162,7 +166,7 @@ export const _store_initialize = async (params: InitializationParams) => {
   // Verify signer address is registered with verifier
   if (verifierUrl != null) {
     try {
-      const response = await fetch(`${verifierUrl}:3001/signerAddress`, {
+      const response = await fetch(`${verifierUrl}/signerAddress`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -182,7 +186,6 @@ export const _store_initialize = async (params: InitializationParams) => {
 
   // IS TESTNET
   const isTestnet = await checkIsTestnet(provider);
-  console.log("isTestnet", isTestnet);
   _sdkStore.setState({ isTestnet });
 
   // SIGNER
@@ -257,9 +260,8 @@ export const _store_fetchKeys = async (
   let crs_data: string | undefined = undefined;
 
   // Fetch publicKey from CoFhe
-  console.log("fetching pk from cofhe", `${coFheUrl}:8448/GetNetworkPublicKey`);
   try {
-    const pk_res = await fetch(`${coFheUrl}:8448/GetNetworkPublicKey`, {
+    const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -274,7 +276,7 @@ export const _store_fetchKeys = async (
   }
 
   try {
-    const crs_res = await fetch(`${coFheUrl}:8448/GetCrs`, {
+    const crs_res = await fetch(`${coFheUrl}/GetCrs`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

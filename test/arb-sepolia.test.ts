@@ -1,8 +1,8 @@
 const ARB_SEPOLIA_RPC = "https://arbitrum-sepolia.drpc.org";
 const ARB_SEPOLIA_CHAIN_ID = 421614n;
-const ARB_SEPOLIA_COFHE_URL =
-  "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com";
-const ARB_SEPOLIA_VERIFIER_URL = "http://fullstack.tn-testnets.fhenix.zone";
+// const ARB_SEPOLIA_COFHE_URL =
+//   "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com";
+// const ARB_SEPOLIA_VERIFIER_URL = "http://fullstack.tn-testnets.fhenix.zone";
 
 /**
  * @vitest-environment happy-dom
@@ -19,23 +19,15 @@ import {
   MockSigner,
 } from "./utils";
 import { afterEach } from "vitest";
-import { getAddress } from "ethers";
 import {
-  InitializationParams,
   Encryptable,
-  Permission,
-  SealedBool,
-  SealedUint,
-  SealedAddress,
   CoFheInUint64,
   CoFheInAddress,
   CoFheInBool,
   CoFheInUint8,
-  Result,
-  FheTypes,
   EncryptStep,
 } from "../src/types";
-import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
+import { cofhejs, createTfhePublicKey, Permit } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
 describe("Arbitrum Sepolia Tests", () => {
@@ -58,18 +50,14 @@ describe("Arbitrum Sepolia Tests", () => {
     return cofhejs.initialize({
       provider: bobProvider,
       signer: bobSigner,
-      coFheUrl: ARB_SEPOLIA_COFHE_URL,
-      verifierUrl: ARB_SEPOLIA_VERIFIER_URL,
-      rpcUrl: ARB_SEPOLIA_RPC,
+      environment: "TESTNET",
     });
   };
   const initSdkWithAda = async () => {
     return cofhejs.initialize({
       provider: adaProvider,
       signer: adaSigner,
-      coFheUrl: ARB_SEPOLIA_COFHE_URL,
-      verifierUrl: ARB_SEPOLIA_VERIFIER_URL,
-      rpcUrl: ARB_SEPOLIA_RPC,
+      environment: "TESTNET",
     });
   };
 

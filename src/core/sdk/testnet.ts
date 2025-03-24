@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ethers, JsonRpcProvider } from "ethers";
 import { encryptExtract, encryptReplace } from ".";
@@ -8,7 +9,6 @@ import {
   Encrypted_Inputs,
   EncryptStep,
   FheTypes,
-  FheUintUTypes,
   Permission,
   Result,
   ResultErr,
@@ -16,15 +16,26 @@ import {
   UnsealedItem,
   VerifyResult,
 } from "../../types";
-import { sleep, uint160ToAddress } from "../utils";
+import { sleep } from "../utils";
 import { _sdkStore } from "./store";
 import { Permit } from "../permit";
+import { convertViaUtype, isValidUtype } from "../utils/utype";
 
 const mockZkVerifierAddress = "0x0000000000000000000000000000000000000100";
 const mockQueryDecrypterAddress = "0x0000000000000000000000000000000000000200";
 const mockZkVerifierSignerPkey =
   "0x6c8d7f768a6bb4aafe85e8a2f5a9680355239c7e14646ed62b044e39de154512";
 const existsSignature = "0x267c4ae4";
+const mockExampleAbi = [
+  {
+    type: "function",
+    name: "numberHash",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+];
+const mockExampleAddress = "0x0000000000000000000000000000000000000300";
 const mockQueryDecrypterAbi = [
   {
     type: "function",
@@ -450,25 +461,71 @@ export async function mockEncrypt<T extends any[]>(
 }
 
 export async function testSealOutput(
-  provider: AbstractProvider,
-  ctHash: bigint,
+  provider: JsonRpcProvider,
   utype: FheTypes,
   permission: Permission,
 ) {
-  const mockQueryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
-  const callData = mockQueryDecrypterIface.encodeFunctionData(
-    "querySealOutput",
-    [ctHash, utype, permission],
-  );
+  const mockExampleIFace = new ethers.Interface(mockExampleAbi);
 
-  console.log("Permission", permission);
-
-  const result = await provider.call({
-    to: mockQueryDecrypterAddress,
-    data: callData,
+  const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
+  const hashResult = await provider.call({
+    to: mockExampleAddress,
+    data: hashCallData,
   });
 
-  console.log("result", result);
+  console.log({
+    hashResult,
+  });
+
+  const mockDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
+  );
+
+  const sealOutputResult = await mockDecrypter.querySealOutput(
+    hashResult,
+    utype,
+    permission,
+  );
+
+  console.log("query seal output result", sealOutputResult);
+
+  const [_allowed, _error, result] = sealOutputResult;
+
+  const sealedBigInt = BigInt(result);
+  const sealingKeyBigInt = BigInt(permission.sealingKey);
+  const unsealed = sealedBigInt ^ sealingKeyBigInt;
+
+  console.log("mock unsealed", unsealed);
+}
+
+export async function testDecrypt(
+  provider: JsonRpcProvider,
+  utype: FheTypes,
+  permission: Permission,
+) {
+  const mockExampleIFace = new ethers.Interface(mockExampleAbi);
+
+  const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
+  const hashResult = await provider.call({
+    to: mockExampleAddress,
+    data: hashCallData,
+  });
+
+  const mockDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
+  );
+
+  const decryptResult = await mockDecrypter.queryDecrypt(
+    hashResult,
+    utype,
+    permission,
+  );
+
+  console.log("query decrypt result", decryptResult);
 }
 
 export async function mockSealOutput<U extends FheTypes>(
@@ -518,17 +575,61 @@ export async function mockSealOutput<U extends FheTypes>(
   const sealingKeyBigInt = BigInt(permission.sealingKey);
   const unsealed = sealedBigInt ^ sealingKeyBigInt;
 
-  console.log("unsealed", unsealed);
+  console.log("mock unsealed", unsealed);
 
-  // const unsealed = await permit.unsealCiphertext(sealed);
-
-  if (utype === FheTypes.Bool) {
-    return ResultOk(!!unsealed) as Result<UnsealedItem<U>>;
-  } else if (utype === FheTypes.Uint160) {
-    return ResultOk(uint160ToAddress(unsealed)) as Result<UnsealedItem<U>>;
-  } else if (utype == null || FheUintUTypes.includes(utype as number)) {
-    return ResultOk(unsealed) as Result<UnsealedItem<U>>;
-  } else {
+  if (!isValidUtype(utype)) {
     return ResultErr(`mockSealOutput :: invalid utype :: ${utype}`);
   }
+
+  return ResultOk(convertViaUtype(utype, unsealed)) as Result<UnsealedItem<U>>;
+}
+
+export async function mockDecrypt<U extends FheTypes>(
+  rpcUrl: string,
+  ctHash: bigint,
+  utype: U,
+  permit: Permit,
+): Promise<Result<UnsealedItem<U>>> {
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+  const domainValid = await permit.checkSignedDomainValid(provider);
+  if (!domainValid) {
+    return ResultErr("mockDecrypt :: permit domain invalid");
+  }
+
+  const queryDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
+  );
+
+  const permission = permit.getPermission();
+
+  const decryptResult = await queryDecrypter.queryDecrypt(
+    ctHash,
+    utype,
+    permission,
+  );
+
+  const {
+    allowed,
+    error,
+    result,
+  }: { allowed: boolean; error: string; result: string } = decryptResult;
+
+  console.log("decryptResult", allowed, error, result);
+
+  if (error != null) {
+    return ResultErr(`mockDecrypt :: queryDecrypt onchain error - ${error}`);
+  }
+
+  const resultBigInt = BigInt(result);
+
+  if (!isValidUtype(utype)) {
+    return ResultErr(`mockDecrypt :: invalid utype :: ${utype}`);
+  }
+
+  return ResultOk(convertViaUtype(utype, resultBigInt)) as Result<
+    UnsealedItem<U>
+  >;
 }

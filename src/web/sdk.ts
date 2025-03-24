@@ -12,6 +12,7 @@ import {
   initializeCore,
   selectActivePermit,
   unseal,
+  decrypt,
 } from "../core/sdk";
 import { Permit } from "../core/permit";
 import { _sdkStore } from "../core/sdk/store";
@@ -27,6 +28,14 @@ import {
 import { initTfhe } from "./init";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
 import { mockEncrypt } from "../core/sdk/testnet";
+import { applyEnvironmentDefaults } from "../utils/environment";
+import { Environment } from "../types";
+import {
+  ViemInitializerParams,
+  getViemAbstractProviders,
+  EthersInitializerParams,
+  getEthersAbstractProviders,
+} from "../core/permit/initializers";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -40,11 +49,19 @@ export const initialize = async (
   > & {
     ignoreErrors?: boolean;
     generatePermit?: boolean;
+    environment?: Environment;
   },
 ): Promise<Result<Permit | undefined>> => {
+  // Apply environment-specific defaults if environment is provided
+  const processedParamsResult = applyEnvironmentDefaults(params);
+  if (!processedParamsResult.success) {
+    return ResultErr(processedParamsResult.error);
+  }
+  const processedParams = processedParamsResult.data;
+
   // Initialize the fhevm
   await initTfhe().catch((err: unknown) => {
-    if (params.ignoreErrors) {
+    if (processedParams.ignoreErrors) {
       return undefined;
     } else {
       return ResultErr(
@@ -54,14 +71,45 @@ export const initialize = async (
   });
 
   return initializeCore({
-    ...params,
+    ...processedParams,
     tfhePublicKeySerializer: (buff: Uint8Array) => {
       return TfheCompactPublicKey.deserialize(buff);
     },
-    compactPkeCrsSerializer: (buff: Uint8Array) =>
-      CompactPkeCrs.deserialize(buff),
+    compactPkeCrsSerializer: (buff: Uint8Array) => {
+      return CompactPkeCrs.deserialize(buff);
+    },
   });
 };
+
+async function initializeWithViem(
+  params: ViemInitializerParams,
+): Promise<Result<Permit | undefined>> {
+  const result = await getViemAbstractProviders(params);
+  if (!result.success) {
+    return ResultErr(result.error);
+  }
+
+  return initialize({
+    provider: result.data.provider!,
+    signer: result.data.signer!,
+    ...params,
+  });
+}
+
+async function initializeWithEthers(
+  params: EthersInitializerParams,
+): Promise<Result<Permit | undefined>> {
+  const result = await getEthersAbstractProviders(params);
+  if (!result.success) {
+    return ResultErr(result.error);
+  }
+
+  return initialize({
+    provider: result.data.provider!,
+    signer: result.data.signer!,
+    ...params,
+  });
+}
 
 async function encrypt<T extends any[]>(
   setState: (state: EncryptStep) => void,
@@ -116,7 +164,7 @@ async function encrypt<T extends any[]>(
 
   const inItems: CoFheInItem[] = zkVerifyRes.data.map(
     ({ ct_hash, signature }, index) => ({
-      hash: BigInt(ct_hash),
+      ctHash: BigInt(ct_hash),
       securityZone,
       utype: encryptableItems[index].utype,
       signature,
@@ -140,6 +188,8 @@ async function encrypt<T extends any[]>(
 export const cofhejs = {
   store: _sdkStore,
   initialize,
+  initializeWithViem,
+  initializeWithEthers,
 
   createPermit,
   importPermit,
@@ -150,6 +200,6 @@ export const cofhejs = {
 
   encrypt,
 
-  unsealCiphertext,
   unseal,
+  decrypt,
 };
