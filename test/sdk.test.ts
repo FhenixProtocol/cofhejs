@@ -33,7 +33,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe.skipIf(true)("Sdk Tests", () => {
+describe("Sdk Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
