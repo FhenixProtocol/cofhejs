@@ -13,7 +13,7 @@ export interface AbstractSigner {
   provider: AbstractProvider;
 }
 
-export type Environment = "LOCAL" | "TESTNET" | "MAINNET";
+export type Environment = "MOCK" | "LOCAL" | "TESTNET" | "MAINNET";
 
 export type InitializationParams = {
   provider: AbstractProvider;

@@ -12,6 +12,7 @@ import {
   initializeCore,
   selectActivePermit,
   unseal,
+  decrypt,
 } from "../core/sdk";
 import { Permit } from "../core/permit";
 import { _sdkStore } from "../core/sdk/store";
@@ -200,6 +201,6 @@ export const cofhejs = {
 
   encrypt,
 
-  //unsealCiphertext,
   unseal,
+  decrypt,
 };
