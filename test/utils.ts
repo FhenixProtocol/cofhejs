@@ -113,21 +113,6 @@ export class MockProvider implements AbstractProvider {
   }
 }
 
-export const uint8ArrayToBigInt = (bytes: Uint8Array): bigint => {
-  console.log("uint8ArrayToBigInt", bytes);
-  let result = 0n;
-  for (const byte of bytes) {
-    result = (result << 8n) | BigInt(byte);
-  }
-  return result;
-};
-
-export const uint8ArrayToString = (value: Uint8Array): string => {
-  return Array.from(value)
-    .map((byte) => String.fromCharCode(byte))
-    .join("");
-};
-
 export const expectResultSuccess = <T>(result: Result<T>): T => {
   expect(result.error).toEqual(null);
   expect(result.data).not.toEqual(null);

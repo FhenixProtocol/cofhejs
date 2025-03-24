@@ -135,11 +135,6 @@ function ethersToBigInt(value: BigNumberish | Uint8Array): bigint {
   return getBigInt(value);
 }
 
-export function bytesToBigInt(bytes: Uint8Array) {
-  const arr = Array.from(bytes);  // Ensure it's an array
-  return arr.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
-}
-
 function ethersToBeArray(_value: BigNumberish): Uint8Array {
   const value = getUint(_value);
 
@@ -257,11 +252,7 @@ export function uint160ToAddress(uint160: bigint): string {
   return ethers.getAddress("0x" + hexStr);
 }
 
-export const uint8ArrayToBigInt = (bytes: Uint8Array): bigint => {
-  console.log("uint8ArrayToBigInt", bytes);
-  let result = 0n;
-  for (const byte of bytes) {
-    result = (result << 8n) | BigInt(byte);
-  }
-  return result;
-};
+export function bytesToBigInt(bytes: Uint8Array) {
+  const arr = Array.from(bytes); // Ensure it's an array
+  return arr.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
+}

@@ -12,7 +12,6 @@ import {
   expectResultSuccess,
   MockProvider,
   MockSigner,
-  uint8ArrayToBigInt,
 } from "./utils";
 import { afterEach } from "vitest";
 import { getAddress } from "ethers";
@@ -29,6 +28,7 @@ import {
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
+import { bytesToBigInt } from "../src/core/utils";
 
 describe("Sdk Tests", () => {
   let bobPublicKey: string;
@@ -451,7 +451,7 @@ describe("Sdk Tests", () => {
       });
       const { decrypted } = await decryptRes.json();
       console.log({ decrypted });
-      const unsealed = uint8ArrayToBigInt(decrypted);
+      const unsealed = bytesToBigInt(decrypted);
       console.log("unsealed", unsealed);
     } catch (e) {
       console.log("unseal :: decrypt request failed ::", e);
