@@ -6,6 +6,7 @@ import { Environment } from "../types";
 export function applyEnvironmentDefaults<
   T extends {
     environment?: Environment;
+    rpcUrl?: string;
     coFheUrl?: string;
     verifierUrl?: string;
     thresholdNetworkUrl?: string;
@@ -30,29 +31,39 @@ export function applyEnvironmentDefaults<
 
   switch (params.environment) {
     case "MOCK":
+      result.rpcUrl = "http://127.0.0.1:8545";
       result.coFheUrl = undefined;
       result.verifierUrl = undefined;
       result.thresholdNetworkUrl = undefined;
       break;
     case "LOCAL":
+      result.rpcUrl = params.rpcUrl || "http://127.0.0.1:42069";
       result.coFheUrl = params.coFheUrl || "http://127.0.0.1:8448";
       result.verifierUrl = params.verifierUrl || "http://127.0.0.1:3001";
       result.thresholdNetworkUrl =
         params.thresholdNetworkUrl || "http://127.0.0.1:3000";
       break;
     case "TESTNET":
-      result.coFheUrl = params.coFheUrl || "https://cofhe.fhenix.zone";
+      result.rpcUrl = params.rpcUrl || "https://arbitrum-sepolia.drpc.org";
+      result.coFheUrl =
+        params.coFheUrl ||
+        "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com:8448";
       result.verifierUrl =
-        params.verifierUrl || "https://cofhe-verifier.fhenix.zone";
+        params.verifierUrl || "http://fullstack.tn-testnets.fhenix.zone:3001";
       result.thresholdNetworkUrl =
-        params.thresholdNetworkUrl || "https://cofhe-tn.fhenix.zone";
+        params.thresholdNetworkUrl ||
+        "http://fullstack.tn-testnets.fhenix.zone:3000";
       break;
     case "MAINNET":
-      result.coFheUrl = params.coFheUrl || "https://cofhe.fhenix.com";
+      result.rpcUrl = params.rpcUrl || "https://arbitrum-sepolia.drpc.org";
+      result.coFheUrl =
+        params.coFheUrl ||
+        "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com";
       result.verifierUrl =
-        params.verifierUrl || "https://cofhe-verifier.fhenix.com";
+        params.verifierUrl || "http://fullstack.tn-testnets.fhenix.zone:3001";
       result.thresholdNetworkUrl =
-        params.thresholdNetworkUrl || "https://cofhe-tn.fhenix.com";
+        params.thresholdNetworkUrl ||
+        "http://fullstack.tn-testnets.fhenix.zone:3000";
       break;
     default:
       throw new Error(`Unknown environment: ${params.environment}`);

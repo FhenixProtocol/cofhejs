@@ -55,14 +55,14 @@ describe("Local Testnet (Anvil) Tests", () => {
     return cofhejs.initialize({
       provider: bobProvider,
       signer: bobSigner,
-      rpcUrl: anvilRpcUrl,
+      environment: "MOCK",
     });
   };
   const initSdkWithAda = async () => {
     return cofhejs.initialize({
       provider: adaProvider,
       signer: adaSigner,
-      rpcUrl: anvilRpcUrl,
+      environment: "MOCK",
     });
   };
 

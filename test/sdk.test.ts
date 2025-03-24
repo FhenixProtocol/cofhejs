@@ -56,18 +56,14 @@ describe("Sdk Tests", () => {
     return cofhejs.initialize({
       provider: bobProvider,
       signer: bobSigner,
-      coFheUrl,
-      verifierUrl,
-      rpcUrl,
+      environment: "LOCAL",
     });
   };
   const initSdkWithAda = async () => {
     return cofhejs.initialize({
       provider: adaProvider,
       signer: adaSigner,
-      coFheUrl,
-      verifierUrl,
-      rpcUrl,
+      environment: "LOCAL",
     });
   };
 
@@ -436,7 +432,7 @@ describe("Sdk Tests", () => {
     expect(nestedCleartext).toEqual(expectedCleartext);
   });
 
-  it.only("unseal via cofhe", async () => {
+  it("unseal via cofhe", async () => {
     await initSdkWithBob();
     expectResultSuccess(
       await cofhejs.createPermit({
@@ -455,7 +451,7 @@ describe("Sdk Tests", () => {
     console.log("result", result);
   });
 
-  it.only("unseal (hardcoded permit)", async () => {
+  it("unseal (hardcoded permit)", async () => {
     await initSdkWithBob();
 
     const ctHash =
