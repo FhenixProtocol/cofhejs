@@ -576,7 +576,9 @@ export async function decrypt<U extends FheTypes>(
       },
       body: JSON.stringify(body),
     });
+    console.log("decryptOutputRes", decryptOutputRes);
     const decryptOutput = await decryptOutputRes.json();
+    console.log("decryptOutput", decryptOutput);
     decrypted = bytesToBigInt(decryptOutput.decrypted);
 
     if (decrypted == null) {

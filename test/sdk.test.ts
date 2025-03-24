@@ -385,8 +385,9 @@ describe("Sdk Tests", () => {
     expect(bnToAddress(addressCleartext)).toEqual(addressValue);
   });
 
-  it("unseal via cofhe", async () => {
+  it.only("unseal via cofhe", async () => {
     await initSdkWithBob();
+
     expectResultSuccess(
       await cofhejs.createPermit({
         type: "self",
@@ -396,7 +397,7 @@ describe("Sdk Tests", () => {
 
     const result = expectResultSuccess(
       await cofhejs.unseal(
-        104300741372355756199586010481708622322568015192236070755146915723946762830848n,
+        19802325772829003454295216436649817904709442291884150996340034369559496655872n,
         FheTypes.Uint32,
       ),
     );
@@ -404,11 +405,31 @@ describe("Sdk Tests", () => {
     console.log("result", result);
   });
 
-  it("unseal (hardcoded permit)", async () => {
+  it.only("decrypt via cofhe", async () => {
+    await initSdkWithBob();
+
+    expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
+
+    const result = expectResultSuccess(
+      await cofhejs.decrypt(
+        19802325772829003454295216436649817904709442291884150996340034369559496655872n,
+        FheTypes.Uint32,
+      ),
+    );
+
+    console.log("result", result);
+  });
+
+  it.only("unseal (hardcoded permit)", async () => {
     await initSdkWithBob();
 
     const ctHash =
-      104300741372355756199586010481708622322568015192236070755146915723946762830848n;
+      19802325772829003454295216436649817904709442291884150996340034369559496655872n;
     const permission: Permission = {
       issuer: "0xB4E1decAd11798C446BcBed8C25b2f2923Fc1AC8",
       expiration: 1000000000000,
@@ -421,16 +442,6 @@ describe("Sdk Tests", () => {
         "0x4a5bc77846e2a1f846bb2d91971eb2ce520baa633634217b1a888ab609f8f447173c57f7498e249f25b4fd1666b4f79099e8c7f987d2971765b7b4ac46b642e31b",
       recipientSignature: "0x",
     };
-
-    // const permit = await Permit.createAndSign(
-    //   { type: "self", ...permission },
-    //   bobSigner,
-    //   rpcUrl,
-    // );
-
-    // console.log("permit", permit);
-
-    // permission = permit.getPermission();
 
     try {
       const body = {
@@ -474,7 +485,11 @@ describe("Sdk Tests", () => {
         },
         body: JSON.stringify(body),
       });
-      console.log("unseal sealOutputRes", await sealOutputRes.text());
+      const { sealed, signature, encryption_type } = await sealOutputRes.json();
+      console.log("sealed", sealed);
+      console.log("signature", signature);
+      console.log("encryption_type", encryption_type);
+
       // const sealOutput = await sealOutputRes.json();
       // console.log("sealed output", sealOutput);
       // const sealed = BigInt(sealOutput.data).toString();
