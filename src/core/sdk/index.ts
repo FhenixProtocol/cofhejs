@@ -23,7 +23,7 @@ import {
   UnsealedItem,
 } from "../../types";
 import { mockDecrypt, mockSealOutput } from "./testnet";
-import { toBigInt } from "../utils";
+import { bytesToBigInt } from "../utils";
 import { convertViaUtype, isValidUtype } from "../utils/utype";
 
 /**
@@ -572,6 +572,7 @@ export async function decrypt<U extends FheTypes>(
       "decrypt thresholdNetworkUrl",
       `${thresholdNetworkUrl}/decrypt`,
     );
+
     const decryptOutputRes = await fetch(`${thresholdNetworkUrl}/decrypt`, {
       method: "POST",
       headers: {
@@ -579,9 +580,8 @@ export async function decrypt<U extends FheTypes>(
       },
       body: JSON.stringify(body),
     });
-
     const decryptOutput = await decryptOutputRes.json();
-    decrypted = toBigInt(decryptOutput.data);
+    decrypted = bytesToBigInt(decryptOutput.decrypted);
 
     if (decrypted == null) {
       return ResultErr("decrypt :: decrypted data not found");
