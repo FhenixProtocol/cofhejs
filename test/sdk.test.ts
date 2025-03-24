@@ -33,7 +33,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe.skipIf(true)("Sdk Tests", () => {
+describe("Sdk Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -436,7 +436,7 @@ describe.skipIf(true)("Sdk Tests", () => {
     expect(nestedCleartext).toEqual(expectedCleartext);
   });
 
-  it.only("unseal via cofhe", async () => {
+  it("unseal via cofhe", async () => {
     await initSdkWithBob();
     expectResultSuccess(
       await cofhejs.createPermit({
@@ -455,7 +455,7 @@ describe.skipIf(true)("Sdk Tests", () => {
     console.log("result", result);
   });
 
-  it.only("unseal (hardcoded permit)", async () => {
+  it("unseal (hardcoded permit)", async () => {
     await initSdkWithBob();
 
     const ctHash =

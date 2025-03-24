@@ -141,7 +141,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
   });
 
-  it.skip("encrypt", { timeout: 320000 }, async () => {
+  it("encrypt", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     await cofhejs.createPermit({

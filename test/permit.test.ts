@@ -13,7 +13,7 @@ import { SealedBool, SealedUint, SealedAddress, FheTypes } from "../src/types";
 
 import { createTfhePublicKey, Permit, SealingKey } from "../src/node";
 
-describe.skip("Permit Tests", () => {
+describe("Permit Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
