@@ -112,17 +112,13 @@ export type PermitOptions =
       }
     >;
 
-export type SerializedPermitMetadata = Omit<PermitMetadata, "_signedDomain"> & {
-  _signedDomain: any | undefined;
-};
-
-export type SerializedPermit = Omit<PermitInterface, "sealingPair"> &
-  SerializedPermitMetadata & {
-    sealingPair: {
-      privateKey: string;
-      publicKey: string;
-    };
+export type SerializedPermit = Omit<PermitInterface, "sealingPair"> & {
+  _signedDomain: EIP712Domain | undefined;
+  sealingPair: {
+    privateKey: string;
+    publicKey: string;
   };
+};
 
 /**
  * A type representing the Permission struct that is passed to Permissioned.sol to grant encrypted data access.
