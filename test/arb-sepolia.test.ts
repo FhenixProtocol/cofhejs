@@ -19,23 +19,15 @@ import {
   MockSigner,
 } from "./utils";
 import { afterEach } from "vitest";
-import { getAddress } from "ethers";
 import {
-  InitializationParams,
   Encryptable,
-  Permission,
-  SealedBool,
-  SealedUint,
-  SealedAddress,
   CoFheInUint64,
   CoFheInAddress,
   CoFheInBool,
   CoFheInUint8,
-  Result,
-  FheTypes,
   EncryptStep,
 } from "../src/types";
-import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
+import { cofhejs, createTfhePublicKey, Permit } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
 describe("Arbitrum Sepolia Tests", () => {

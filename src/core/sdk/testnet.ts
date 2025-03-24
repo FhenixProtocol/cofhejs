@@ -25,6 +25,16 @@ const mockQueryDecrypterAddress = "0x0000000000000000000000000000000000000200";
 const mockZkVerifierSignerPkey =
   "0x6c8d7f768a6bb4aafe85e8a2f5a9680355239c7e14646ed62b044e39de154512";
 const existsSignature = "0x267c4ae4";
+const mockExampleAbi = [
+  {
+    type: "function",
+    name: "numberHash",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+];
+const mockExampleAddress = "0x0000000000000000000000000000000000000300";
 const mockQueryDecrypterAbi = [
   {
     type: "function",
@@ -450,25 +460,75 @@ export async function mockEncrypt<T extends any[]>(
 }
 
 export async function testSealOutput(
-  provider: AbstractProvider,
-  ctHash: bigint,
+  provider: JsonRpcProvider,
   utype: FheTypes,
   permission: Permission,
 ) {
-  const mockQueryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
-  const callData = mockQueryDecrypterIface.encodeFunctionData(
-    "querySealOutput",
-    [ctHash, utype, permission],
-  );
+  const mockExampleIFace = new ethers.Interface(mockExampleAbi);
 
-  console.log("Permission", permission);
-
-  const result = await provider.call({
-    to: mockQueryDecrypterAddress,
-    data: callData,
+  const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
+  const hashResult = await provider.call({
+    to: mockExampleAddress,
+    data: hashCallData,
   });
 
-  console.log("result", result);
+  console.log({
+    hashResult,
+  });
+
+  const mockDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
+  );
+
+  const sealOutputResult = await mockDecrypter.querySealOutput(
+    hashResult,
+    utype,
+    permission,
+  );
+
+  console.log("query seal output result", sealOutputResult);
+
+  const [allowed, error, result] = sealOutputResult;
+
+  const sealedBigInt = BigInt(result);
+  const sealingKeyBigInt = BigInt(permission.sealingKey);
+  const unsealed = sealedBigInt ^ sealingKeyBigInt;
+
+  console.log("mock unsealed", unsealed);
+}
+
+export async function testDecrypt(
+  provider: JsonRpcProvider,
+  utype: FheTypes,
+  permission: Permission,
+) {
+  const mockExampleIFace = new ethers.Interface(mockExampleAbi);
+
+  const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
+  const hashResult = await provider.call({
+    to: mockExampleAddress,
+    data: hashCallData,
+  });
+
+  console.log({
+    hashResult,
+  });
+
+  const mockDecrypter = new ethers.Contract(
+    mockQueryDecrypterAddress,
+    mockQueryDecrypterAbi,
+    provider,
+  );
+
+  const decryptResult = await mockDecrypter.queryDecrypt(
+    hashResult,
+    utype,
+    permission,
+  );
+
+  console.log("query decrypt result", decryptResult);
 }
 
 export async function mockSealOutput<U extends FheTypes>(

@@ -31,7 +31,7 @@ import {
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
-import { testSealOutput } from "../src/core/sdk/testnet";
+import { testDecrypt, testSealOutput } from "../src/core/sdk/testnet";
 
 describe("Local Testnet (Anvil) Tests", () => {
   let bobPublicKey: string;
@@ -177,21 +177,40 @@ describe("Local Testnet (Anvil) Tests", () => {
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
   });
 
-  it("querySealOutput hardcoded", async () => {
-    const permission: Permission = {
-      issuer: "0x0376AAc07Ad725E01357B1725B5ceC61aE10473c",
-      expiration: 10000000000,
-      recipient: "0x0000000000000000000000000000000000000000",
-      validatorId: 0,
-      validatorContract: "0x0000000000000000000000000000000000000000",
-      sealingKey:
-        "0xf9f00615e0feb5664eb1b004bfb45f8183875b66a27b01cc0e649e6523e0a5ef",
-      issuerSignature:
-        "0x43c4c262846973969429169fe9ea2d116957583ed28171f50d82cd1b3c2e474c0a520094c4976852d78ed109b727b787ea90d440af3ffe4532b0805f96135c0d1c",
-      recipientSignature: "0x",
-    };
+  it.only("querySealOutput test", async () => {
+    await initSdkWithBob();
 
-    await testSealOutput(bobProvider, 0n, FheTypes.Bool, permission);
+    const permit = expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
+
+    const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
+
+    await testSealOutput(
+      jsonRpcProvider,
+      FheTypes.Bool,
+      permit.getPermission(),
+    );
+  });
+
+  it.only("queryDecrypt test", async () => {
+    await initSdkWithBob();
+
+    const permit = expectResultSuccess(
+      await cofhejs.createPermit({
+        type: "self",
+        issuer: bobAddress,
+      }),
+    );
+
+    console.log("permit issuer", permit.issuer);
+
+    const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
+
+    await testDecrypt(jsonRpcProvider, FheTypes.Bool, permit.getPermission());
   });
 
   it("full flow", { timeout: 320000 }, async () => {
@@ -272,7 +291,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     const ctHash = await exampleContract.numberHash();
     console.log("ctHash", ctHash);
 
-    const permit = expectResultSuccess(
+    expectResultSuccess(
       await cofhejs.createPermit({
         type: "self",
         issuer: bobAddress,
