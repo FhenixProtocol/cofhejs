@@ -53,7 +53,11 @@ export const initialize = async (
   },
 ): Promise<Result<Permit | undefined>> => {
   // Apply environment-specific defaults if environment is provided
-  const processedParams = applyEnvironmentDefaults(params);
+  const processedParamsResult = applyEnvironmentDefaults(params);
+  if (!processedParamsResult.success) {
+    return ResultErr(processedParamsResult.error);
+  }
+  const processedParams = processedParamsResult.data;
 
   // Initialize the fhevm
   await initTfhe().catch((err: unknown) => {

@@ -1,4 +1,4 @@
-import { Environment } from "../types";
+import { Environment, Result, ResultErr, ResultOk } from "../types";
 
 /**
  * Applies environment-specific default values to initialization parameters
@@ -11,7 +11,7 @@ export function applyEnvironmentDefaults<
     verifierUrl?: string;
     thresholdNetworkUrl?: string;
   },
->(params: T): T {
+>(params: T): Result<T> {
   // Create a copy of the original params to avoid modifying the input
   const result = { ...params };
 
@@ -26,7 +26,7 @@ export function applyEnvironmentDefaults<
         "When environment is not specified, coFheUrl, verifierUrl, and thresholdNetworkUrl must be provided",
       );
     }
-    return result;
+    return ResultOk(result);
   }
 
   switch (params.environment) {
@@ -66,8 +66,8 @@ export function applyEnvironmentDefaults<
         "http://fullstack.tn-testnets.fhenix.zone:3000";
       break;
     default:
-      throw new Error(`Unknown environment: ${params.environment}`);
+      return ResultErr(`Unknown environment: ${params.environment}`);
   }
 
-  return result;
+  return ResultOk(result);
 }
