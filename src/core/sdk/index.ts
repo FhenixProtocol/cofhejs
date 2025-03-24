@@ -586,6 +586,10 @@ export async function decrypt<U extends FheTypes>(
     if (decrypted == null) {
       return ResultErr("decrypt :: decrypted data not found");
     }
+
+    if (decryptOutput.encryption_type !== utype) {
+      return ResultErr(`decrypt :: unexpected encryption type :: received ${decryptOutput.encryption_type}, expected ${utype}`);
+    }
   } catch (e) {
     console.log("decrypt :: decrypt request failed ::", e);
     return ResultErr(`decrypt :: decrypt request failed :: ${e}`);
