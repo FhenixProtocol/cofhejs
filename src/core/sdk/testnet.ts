@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ethers, JsonRpcProvider } from "ethers";
 import { encryptExtract, encryptReplace } from ".";
@@ -490,7 +491,7 @@ export async function testSealOutput(
 
   console.log("query seal output result", sealOutputResult);
 
-  const [allowed, error, result] = sealOutputResult;
+  const [_allowed, _error, result] = sealOutputResult;
 
   const sealedBigInt = BigInt(result);
   const sealingKeyBigInt = BigInt(permission.sealingKey);
@@ -510,10 +511,6 @@ export async function testDecrypt(
   const hashResult = await provider.call({
     to: mockExampleAddress,
     data: hashCallData,
-  });
-
-  console.log({
-    hashResult,
   });
 
   const mockDecrypter = new ethers.Contract(

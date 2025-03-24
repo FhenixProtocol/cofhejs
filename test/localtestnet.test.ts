@@ -13,14 +13,9 @@ import {
   MockSigner,
 } from "./utils";
 import { afterEach } from "vitest";
-import { ethers, getAddress } from "ethers";
+import { ethers } from "ethers";
 import {
-  InitializationParams,
   Encryptable,
-  Permission,
-  SealedBool,
-  SealedUint,
-  SealedAddress,
   CoFheInUint64,
   CoFheInAddress,
   CoFheInBool,
@@ -206,8 +201,6 @@ describe("Local Testnet (Anvil) Tests", () => {
       }),
     );
 
-    console.log("permit issuer", permit.issuer);
-
     const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
 
     await testDecrypt(jsonRpcProvider, FheTypes.Bool, permit.getPermission());
@@ -360,91 +353,26 @@ describe("Local Testnet (Anvil) Tests", () => {
 
     // Bool
     const boolValue = true;
-    const boolCipherStruct: SealedBool = {
-      data: SealingKey.seal(boolValue ? 1 : 0, permit.sealingPair.publicKey),
-      utype: FheTypes.Bool,
-    };
+    const boolSealed = SealingKey.seal(
+      boolValue ? 1 : 0,
+      permit.sealingPair.publicKey,
+    );
+    const boolCleartext = permit.unsealCiphertext(boolSealed);
+    expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
 
     // Uint
     const uintValue = 937387n;
-    const uintCipherStruct: SealedUint = {
-      data: SealingKey.seal(uintValue, permit.sealingPair.publicKey),
-      utype: FheTypes.Uint64,
-    };
+    const uintSealed = SealingKey.seal(uintValue, permit.sealingPair.publicKey);
+    const uintCleartext = permit.unsealCiphertext(uintSealed);
+    expect(uintCleartext).toEqual(uintValue);
 
     // Address
     const addressValue = contractAddress;
-    const addressCipherStruct: SealedAddress = {
-      data: SealingKey.seal(BigInt(addressValue), permit.sealingPair.publicKey),
-      utype: FheTypes.Uint160,
-    };
-
-    // Array - Nested
-    const nestedCleartext = permit.unseal([
-      boolCipherStruct,
-      uintCipherStruct,
-      addressCipherStruct,
-    ] as const);
-
-    type ExpectedCleartextType = readonly [boolean, bigint, string];
-
-    const expectedCleartext = [boolValue, uintValue, addressValue];
-
-    expectTypeOf(nestedCleartext).toEqualTypeOf<ExpectedCleartextType>();
-
-    expect(nestedCleartext).toEqual(expectedCleartext);
+    const addressSealed = SealingKey.seal(
+      BigInt(addressValue),
+      permit.sealingPair.publicKey,
+    );
+    const addressCleartext = permit.unsealCiphertext(addressSealed);
+    expect(addressCleartext).toEqual(addressValue);
   });
-
-  // TODO: Re-enable once hardhat integration with CoFHE established
-  // it("hardhat encrypt/unseal", async () => {
-  //   const hardhatChainId = "31337";
-
-  //   bobProvider = new MockProvider(bobPublicKey, BobWallet, hardhatChainId);
-  //   bobSigner = await bobProvider.getSigner();
-
-  //   // Should initialize correctly, but fhe public key for hardhat not set
-  //   await cofhejs.initialize({
-  //     provider: bobProvider,
-  //     signer: bobSigner,
-  //   });
-  //   await cofhejs.createPermit();
-
-  //   // Chain id set to hardhat Chain id
-  //   expect(cofhejs.store.getState().chainId).toEqual(hardhatChainId);
-  //   expect(cofhejs.store.getState().fheKeys).toEqual({});
-
-  //   // `unsealCiphertext`
-
-  //   // const encryptedValue = cofhejs.encryptValue(5, EncryptionTypes.uint8);
-  //   // const unsealedValue = cofhejs.unsealCiphertext(
-  //   //   uint8ArrayToString(encryptedValue.data!.data),
-  //   // );
-  //   // expect(unsealedValue.error).toEqual(null);
-  //   // expect(unsealedValue.data).toEqual(5n);
-
-  //   // `unseal`
-
-  //   const intValue = 5;
-  //   const boolValue = false;
-
-  //   const encryptResult = (
-  //     await cofhejs.encrypt([
-  //       Encryptable.uint8(intValue),
-  //       Encryptable.bool(boolValue),
-  //     ])
-  //   );
-  //   expect(encryptResult.success).to.equal(true)
-  //   if (!encryptResult.success) return;
-
-  //   const [ encryptedInt, encryptedBool ] = encryptResult.data
-
-  //   const sealed = [
-  //     { data: uint8ArrayToString(encryptedInt), utype: FheUType.uint8 },
-  //     { data: uint8ArrayToString(encryptedBool), utype: FheUType.bool },
-  //   ];
-
-  //   const [unsealedInt, unsealedBool] = cofhejs.unseal(sealed).data!;
-  //   expect(unsealedInt).to.eq(BigInt(intValue));
-  //   expect(unsealedBool).to.eq(boolValue);
-  // });
 });

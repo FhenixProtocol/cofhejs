@@ -7,24 +7,14 @@ import {
   isString,
 } from "../utils";
 import * as nacl from "tweetnacl";
-import * as naclUtil from "tweetnacl-util";
 
 const PRIVATE_KEY_LENGTH = 64;
 const PUBLIC_KEY_LENGTH = 64;
 
-// This structure has been cloned from metamask's signing util, which is licensed under
-// ISC, a copy of which can be found in the /licenses folder
 export type EthEncryptedData = {
-  version: string;
-  nonce: string;
-  ephemPublicKey: string;
-  ciphertext: string;
-};
-
-export type EthEncryptedData2 = {
   data: Uint8Array;
   public_key: Uint8Array;
-  nonce: Uint8Array;  
+  nonce: Uint8Array;
 };
 
 /**
@@ -62,45 +52,38 @@ export class SealingKey {
     this.publicKey = publicKey;
   }
 
-  /**
-   * Unseals (decrypts) the provided ciphertext using the instance's private key.
-   *
-   * @param {string | Uint8Array} ciphertext - The encrypted data to be decrypted.
-   * @returns BigInt - The decrypted message as a bigint.
-   * @throws Will throw an error if the decryption process fails.
-   */
-  unseal = (ciphertext: string | Uint8Array): bigint => {
-    let parsedData: EthEncryptedData | undefined = undefined;
-    try {
-      if (typeof ciphertext === "string") {
-        parsedData = JSON.parse(ciphertext);
-      }
-    } catch {
-      // ignore errors
-    }
-    if (!parsedData) {
-      const toDecrypt =
-        typeof ciphertext === "string" ? fromHexString(ciphertext) : ciphertext;
+  unseal = (parsedData: EthEncryptedData): bigint => {
+    // Ensure all parameters are Uint8Array
+    const nonce =
+      parsedData.nonce instanceof Uint8Array
+        ? parsedData.nonce
+        : new Uint8Array(parsedData.nonce);
 
-      // decode json structure that gets returned from the chain
-      const jsonString = Buffer.from(toDecrypt).toString("utf8");
-      parsedData = JSON.parse(jsonString);
-    }
+    const ephemPublicKey =
+      parsedData.public_key instanceof Uint8Array
+        ? parsedData.public_key
+        : new Uint8Array(parsedData.public_key);
 
-    if (!parsedData) {
-      throw new Error("Failed to parse sealed data");
-    }
+    const dataToDecrypt =
+      parsedData.data instanceof Uint8Array
+        ? parsedData.data
+        : new Uint8Array(parsedData.data);
 
-    // assemble decryption parameters
-    const nonce = naclUtil.decodeBase64(parsedData.nonce);
-    const ephemPublicKey = naclUtil.decodeBase64(parsedData.ephemPublicKey);
-    const dataToDecrypt = naclUtil.decodeBase64(parsedData.ciphertext);
+    // Make sure the private key is also a Uint8Array
+    const privateKeyBytes = fromHexString(this.privateKey);
+
+    // Debug information
+    // console.log("nonce length:", nonce.length);
+    // console.log("ephemPublicKey length:", ephemPublicKey.length);
+    // console.log("privateKeyBytes length:", privateKeyBytes.length);
+    // console.log("dataToDecrypt length:", dataToDecrypt.length);
+
     // call the nacl box function to decrypt the data
     const decryptedMessage = nacl.box.open(
       dataToDecrypt,
       nonce,
       ephemPublicKey,
-      fromHexString(this.privateKey),
+      privateKeyBytes,
     );
 
     if (!decryptedMessage) {
@@ -109,45 +92,6 @@ export class SealingKey {
 
     return toBigInt(decryptedMessage);
   };
-
-  unseal2 = (parsedData: EthEncryptedData2): bigint => {
-    
-    // Ensure all parameters are Uint8Array
-    const nonce = parsedData.nonce instanceof Uint8Array 
-      ? parsedData.nonce 
-      : new Uint8Array(parsedData.nonce);
-      
-    const ephemPublicKey = parsedData.public_key instanceof Uint8Array 
-      ? parsedData.public_key 
-      : new Uint8Array(parsedData.public_key);
-      
-    const dataToDecrypt = parsedData.data instanceof Uint8Array 
-      ? parsedData.data 
-      : new Uint8Array(parsedData.data);
-    
-    // Make sure the private key is also a Uint8Array
-    const privateKeyBytes = fromHexString(this.privateKey);
-    
-    // Debug information
-    console.log("nonce length:", nonce.length);
-    console.log("ephemPublicKey length:", ephemPublicKey.length);
-    console.log("privateKeyBytes length:", privateKeyBytes.length);
-    console.log("dataToDecrypt length:", dataToDecrypt.length);
-    
-    // call the nacl box function to decrypt the data
-    const decryptedMessage = nacl.box.open(
-      dataToDecrypt,
-      nonce,
-      ephemPublicKey,
-      privateKeyBytes
-    );
-
-    if (!decryptedMessage) {
-      throw new Error("Failed to decrypt message");
-    }
-
-    return toBigInt(decryptedMessage);
-  };  
 
   /**
    * Seals (encrypts) the provided message for a receiver with the specified public key.
@@ -158,7 +102,10 @@ export class SealingKey {
    * @static
    * @throws Will throw if the provided publicKey or value do not meet defined preconditions.
    */
-  static seal = (value: bigint | number, publicKey: string): string => {
+  static seal = (
+    value: bigint | number,
+    publicKey: string,
+  ): EthEncryptedData => {
     isString(publicKey);
     isBigIntOrNumber(value);
 
@@ -174,16 +121,11 @@ export class SealingKey {
       ephemeralKeyPair.secretKey,
     );
 
-    // handle encrypted data
-    const output = {
-      version: "x25519-xsalsa20-poly1305",
-      nonce: naclUtil.encodeBase64(nonce),
-      ephemPublicKey: naclUtil.encodeBase64(ephemeralKeyPair.publicKey),
-      ciphertext: naclUtil.encodeBase64(encryptedMessage),
+    return {
+      data: encryptedMessage,
+      public_key: ephemeralKeyPair.publicKey,
+      nonce: nonce,
     };
-
-    // mimicking encoding from the chain
-    return toHexString(Buffer.from(JSON.stringify(output)));
   };
 }
 

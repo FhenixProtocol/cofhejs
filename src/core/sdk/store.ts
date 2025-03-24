@@ -186,7 +186,6 @@ export const _store_initialize = async (params: InitializationParams) => {
 
   // IS TESTNET
   const isTestnet = await checkIsTestnet(provider);
-  console.log("isTestnet", isTestnet);
   _sdkStore.setState({ isTestnet });
 
   // SIGNER
@@ -261,7 +260,6 @@ export const _store_fetchKeys = async (
   let crs_data: string | undefined = undefined;
 
   // Fetch publicKey from CoFhe
-  console.log("fetching pk from cofhe", `${coFheUrl}/GetNetworkPublicKey`);
   try {
     const pk_res = await fetch(`${coFheUrl}/GetNetworkPublicKey`, {
       method: "POST",

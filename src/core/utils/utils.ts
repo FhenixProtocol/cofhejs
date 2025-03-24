@@ -256,3 +256,12 @@ export function uint160ToAddress(uint160: bigint): string {
   // Add 0x prefix and convert to checksum address
   return ethers.getAddress("0x" + hexStr);
 }
+
+export const uint8ArrayToBigInt = (bytes: Uint8Array): bigint => {
+  console.log("uint8ArrayToBigInt", bytes);
+  let result = 0n;
+  for (const byte of bytes) {
+    result = (result << 8n) | BigInt(byte);
+  }
+  return result;
+};

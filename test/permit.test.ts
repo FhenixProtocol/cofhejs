@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
 import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
 import { afterEach } from "vitest";
 import { getAddress, ZeroAddress } from "ethers";
-import { SealedBool, SealedUint, SealedAddress, FheTypes } from "../src/types";
+import { FheTypes } from "../src/types";
 
 import { createTfhePublicKey, Permit, SealingKey } from "../src/node";
 
@@ -231,96 +231,6 @@ describe("Permit Tests", () => {
     );
     const addressCleartext = permit.unsealCiphertext(addressCiphertext);
     expect(bnToAddress(addressCleartext)).to.eq(addressValue);
-  });
-  it("unsealTyped", async () => {
-    const permit = await Permit.create({
-      type: "self",
-      issuer: bobAddress,
-    });
-
-    // Bool
-    const boolValue = true;
-    const boolCipherStruct: SealedBool = {
-      data: SealingKey.seal(boolValue ? 1 : 0, permit.sealingPair.publicKey),
-      utype: FheTypes.Bool,
-    };
-    const boolCleartext = permit.unseal(boolCipherStruct);
-    expect(boolCleartext).to.eq(boolValue);
-
-    // Uint
-    const uintValue = 937387n;
-    const uintCipherStruct: SealedUint = {
-      data: SealingKey.seal(uintValue, permit.sealingPair.publicKey),
-      utype: FheTypes.Uint64,
-    };
-    const uintCleartext = permit.unseal(uintCipherStruct);
-    expect(uintCleartext).to.eq(uintValue);
-
-    // Address
-    const addressValue = contractAddress;
-    const addressCipherStruct: SealedAddress = {
-      data: SealingKey.seal(BigInt(addressValue), permit.sealingPair.publicKey),
-      utype: FheTypes.Uint160,
-    };
-    const addressCleartext = permit.unseal(addressCipherStruct);
-    expect(addressCleartext).to.eq(addressValue);
-
-    // Array - Nested
-    const nestedCleartext = permit.unseal([
-      boolCipherStruct,
-      ["hello", "world"],
-      uintCipherStruct,
-      5,
-      addressCipherStruct,
-      false,
-      20n,
-      {
-        bool: boolCipherStruct,
-        uint: uintCipherStruct,
-        address: addressCipherStruct,
-        clear: "clear",
-      },
-    ] as const);
-
-    type ExpectedCleartextType = Readonly<
-      [
-        boolean,
-        readonly [string, string],
-        bigint,
-        number,
-        string,
-        boolean,
-        bigint,
-        {
-          readonly bool: boolean;
-          readonly uint: bigint;
-          readonly address: string;
-          readonly clear: string;
-        },
-      ]
-    >;
-
-    const expectedCleartext: ExpectedCleartextType = [
-      boolValue,
-      ["hello", "world"],
-      uintValue,
-      5,
-      addressValue,
-      false,
-      20n,
-      {
-        bool: boolValue,
-        uint: uintValue,
-        address: addressValue,
-        clear: "clear",
-      },
-    ];
-
-    expectTypeOf<
-      typeof nestedCleartext
-    >().toEqualTypeOf<ExpectedCleartextType>();
-
-    expect(nestedCleartext).to.deep.eq(expectedCleartext);
   });
 
   it("serialize", async () => {

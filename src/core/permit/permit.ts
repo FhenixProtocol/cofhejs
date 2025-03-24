@@ -1,15 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  //AbiCoder,
-  ethers,
-  getAddress,
-  id,
-  JsonRpcProvider,
-  keccak256,
-  TypedDataEncoder,
-  ZeroAddress,
-} from "ethers";
+import { ethers, id, JsonRpcProvider, keccak256, ZeroAddress } from "ethers";
 import {
   getSignatureTypesAndMessage,
   PermitSignaturePrimaryType,
@@ -22,18 +13,14 @@ import {
   PermitMetadata,
   PermitOptions,
   SerializedPermit,
-  MappedUnsealedTypes,
-  getAsSealedItem,
-  isSealedBool,
-  isSealedAddress,
-  isSealedUint,
   AbstractSigner,
   EIP712Domain,
-  EIP712Types,
-  EIP712Message,
 } from "../../types";
-import { EthEncryptedData2, GenerateSealingKey, SealingKey } from "../sdk/sealing";
-import { chainIsHardhat, hardhatMockUnseal } from "../utils";
+import {
+  EthEncryptedData,
+  GenerateSealingKey,
+  SealingKey,
+} from "../sdk/sealing";
 import {
   ACLEip712DomainFnSig,
   TaskManagerAbi,
@@ -327,9 +314,7 @@ export class Permit implements PermitInterface, PermitMetadata {
       TaskManagerAbi,
       provider,
     );
-    console.log("provider rpc", (await provider.getNetwork()).chainId);
     const aclAddress = await taskManager.acl();
-    console.log("aclAddress", aclAddress);
 
     const aclEip712DomainRaw = await provider.call({
       to: aclAddress,
@@ -389,15 +374,6 @@ export class Permit implements PermitInterface, PermitMetadata {
     return this.matchesDomain(domain);
   };
 
-  testHashDomain = async (
-    domain: EIP712Domain,
-    types: EIP712Types,
-    message: EIP712Message,
-  ) => {
-    const hash = TypedDataEncoder.hash(domain, types, message);
-    console.log("hash", hash);
-  };
-
   /**
    * Determines the required signature type.
    * Creates the EIP712 types and message.
@@ -417,14 +393,10 @@ export class Permit implements PermitInterface, PermitMetadata {
     if (this.type === "sharing") primaryType = "PermissionedV2IssuerShared";
     if (this.type === "recipient") primaryType = "PermissionedV2Recipient";
 
-    console.log("rpcUrl", rpcUrl);
-
     const domain = await this.fetchEIP712Domain(
       new ethers.JsonRpcProvider(rpcUrl),
     );
     const { types, message } = this.getSignatureParams(primaryType);
-
-    await this.testHashDomain(domain, types, message);
 
     const signature = await signer.signTypedData(
       { ...domain, chainId: domain.chainId },
@@ -446,65 +418,61 @@ export class Permit implements PermitInterface, PermitMetadata {
    * Use the privateKey of `permit.sealingPair` to unseal `ciphertext` returned from the Fhenix chain.
    * Useful when not using `SealedItem` structs and need to unseal an individual ciphertext.
    */
-  unsealCiphertext = (ciphertext: string | Uint8Array | EthEncryptedData2): bigint => {
-    // Early exit with mock unseal if interacting with hardhat network
-    if (chainIsHardhat(this._signedDomain?.chainId))
-      return hardhatMockUnseal(ciphertext as string);
-
-    //return this.sealingPair.unseal(ciphertext);
-    return this.sealingPair.unseal2(ciphertext as EthEncryptedData2);
+  unsealCiphertext = (ciphertext: EthEncryptedData): bigint => {
+    return this.sealingPair.unseal(ciphertext);
   };
 
-  /**
-   * Uses the privateKey of `permit.sealingPair` to recursively unseal any contained `SealedItems`.
-   * If `item` is a single `SealedItem` it will be individually.
-   * NOTE: Only unseals typed `SealedItem`s returned from `FHE.sealoutputTyped` and the FHE bindings' `e____.sealTyped`.
-   *
-   * @param {any | any[]} item - Array, object, or item. Any nested `SealedItems` will be unsealed.
-   * @returns - Recursively unsealed data in the target type, SealedBool -> boolean, SealedAddress -> string, etc.
-   */
-  unseal<T>(item: T): MappedUnsealedTypes<T>;
-  unseal<T extends any[]>(item: [...T]): [...MappedUnsealedTypes<T>];
-  unseal<T>(item: T) {
-    // SealedItem
-    const sealedItem = getAsSealedItem(item);
-    if (sealedItem != null) {
-      const bn = chainIsHardhat(this._signedDomain?.chainId)
-        ? hardhatMockUnseal(sealedItem.data)
-        : this.sealingPair.unseal(sealedItem.data);
+  // TODO: Re-enable once unseal narrowed to only unseal EthEncryptedData2
+  // /**
+  //  * Uses the privateKey of `permit.sealingPair` to recursively unseal any contained `SealedItems`.
+  //  * If `item` is a single `SealedItem` it will be individually.
+  //  * NOTE: Only unseals typed `SealedItem`s returned from `FHE.sealoutputTyped` and the FHE bindings' `e____.sealTyped`.
+  //  *
+  //  * @param {any | any[]} item - Array, object, or item. Any nested `SealedItems` will be unsealed.
+  //  * @returns - Recursively unsealed data in the target type, SealedBool -> boolean, SealedAddress -> string, etc.
+  //  */
+  // unseal<T>(item: T): MappedUnsealedTypes<T>;
+  // unseal<T extends any[]>(item: [...T]): [...MappedUnsealedTypes<T>];
+  // unseal<T>(item: T) {
+  //   // SealedItem
+  //   const sealedItem = getAsSealedItem(item);
+  //   if (sealedItem != null) {
+  //     const bn = chainIsHardhat(this._signedDomain?.chainId)
+  //       ? hardhatMockUnseal(sealedItem.data)
+  //       : this.sealingPair.unseal(sealedItem.data);
 
-      if (isSealedBool(sealedItem)) {
-        // Return a boolean for SealedBool
-        return Boolean(bn).valueOf() as any;
-      }
-      if (isSealedAddress(sealedItem)) {
-        // Return a string for SealedAddress
-        return getAddress(`0x${bn.toString(16).slice(-40)}`) as any;
-      }
-      if (isSealedUint(sealedItem)) {
-        // Return a bigint for SealedUint
-        return bn as any;
-      }
-    }
+  //     if (isSealedBool(sealedItem)) {
+  //       // Return a boolean for SealedBool
+  //       return Boolean(bn).valueOf() as any;
+  //     }
+  //     if (isSealedAddress(sealedItem)) {
+  //       // Return a string for SealedAddress
+  //       return getAddress(`0x${bn.toString(16).slice(-40)}`) as any;
+  //     }
+  //     if (isSealedUint(sealedItem)) {
+  //       // Return a bigint for SealedUint
+  //       return bn as any;
+  //     }
+  //   }
 
-    // Object | Array
-    if (typeof item === "object" && item !== null) {
-      if (Array.isArray(item)) {
-        // Array - recurse
-        return item.map((nestedItem) => this.unseal(nestedItem));
-      } else {
-        // Object - recurse
-        const result: any = {};
-        for (const key in item) {
-          result[key] = this.unseal(item[key]);
-        }
-        return result;
-      }
-    }
+  //   // Object | Array
+  //   if (typeof item === "object" && item !== null) {
+  //     if (Array.isArray(item)) {
+  //       // Array - recurse
+  //       return item.map((nestedItem) => this.unseal(nestedItem));
+  //     } else {
+  //       // Object - recurse
+  //       const result: any = {};
+  //       for (const key in item) {
+  //         result[key] = this.unseal(item[key]);
+  //       }
+  //       return result;
+  //     }
+  //   }
 
-    // Primitive
-    return item;
-  }
+  //   // Primitive
+  //   return item;
+  // }
 
   /**
    * Returns whether the active party has created their signature.

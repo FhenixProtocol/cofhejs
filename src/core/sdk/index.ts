@@ -25,6 +25,7 @@ import {
 import { mockDecrypt, mockSealOutput } from "./testnet";
 import { bytesToBigInt } from "../utils";
 import { convertViaUtype, isValidUtype } from "../utils/utype";
+import { EthEncryptedData } from "./sealing";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -464,9 +465,6 @@ export async function unseal<U extends FheTypes>(
     );
   }
 
-  console.log("unseal :: resolvedAccount", resolvedAccount);
-  console.log("unseal :: resolvedHash", resolvedHash);
-
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
     return ResultErr(
@@ -482,7 +480,7 @@ export async function unseal<U extends FheTypes>(
   if (thresholdNetworkUrl == null)
     return ResultErr("unseal :: thresholdNetworkUrl not initialized");
 
-  let sealed: string | undefined;
+  let sealed: EthEncryptedData | undefined;
 
   try {
     const body = {
@@ -490,10 +488,6 @@ export async function unseal<U extends FheTypes>(
       host_chain_id: Number(_sdkStore.getState().chainId),
       permit: permit.getPermission(),
     };
-    console.log(
-      "unseal thresholdNetworkUrl",
-      `${thresholdNetworkUrl}/sealoutput`,
-    );
     const sealOutputRes = await fetch(`${thresholdNetworkUrl}/sealoutput`, {
       method: "POST",
       headers: {
@@ -503,7 +497,9 @@ export async function unseal<U extends FheTypes>(
     });
 
     const sealOutput = await sealOutputRes.json();
+    console.log("unseal sealOutput", sealOutput);
     sealed = sealOutput.sealed;
+    console.log("unseal sealed", sealed);
   } catch (e) {
     console.log("unseal :: sealOutput request failed ::", e);
     return ResultErr(`unseal :: sealOutput request failed :: ${e}`);
@@ -588,7 +584,9 @@ export async function decrypt<U extends FheTypes>(
     }
 
     if (decryptOutput.encryption_type !== utype) {
-      return ResultErr(`decrypt :: unexpected encryption type :: received ${decryptOutput.encryption_type}, expected ${utype}`);
+      return ResultErr(
+        `decrypt :: unexpected encryption type :: received ${decryptOutput.encryption_type}, expected ${utype}`,
+      );
     }
   } catch (e) {
     console.log("decrypt :: decrypt request failed ::", e);

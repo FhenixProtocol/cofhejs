@@ -70,11 +70,6 @@ export const initialize = async (
     }
   });
 
-  // Make sure we're passing all required properties to initializeCore
-  if (!processedParams.provider) {
-    return ResultErr("initialize :: provider is required");
-  }
-
   return initializeCore({
     ...processedParams,
     tfhePublicKeySerializer: (buff: Uint8Array) => {

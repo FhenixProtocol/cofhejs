@@ -5,17 +5,6 @@ export type EncryptedNumber = {
   securityZone: number;
 };
 
-// TODO: Remove this after `encrypt` removed (in favor of zkpok)
-// TODO: Migrate `encrypt` validations to Encryptables
-export interface EncryptedBool extends EncryptedNumber {}
-export interface EncryptedUint8 extends EncryptedNumber {}
-export interface EncryptedUint16 extends EncryptedNumber {}
-export interface EncryptedUint32 extends EncryptedNumber {}
-export interface EncryptedUint64 extends EncryptedNumber {}
-export interface EncryptedUint128 extends EncryptedNumber {}
-export interface EncryptedUint256 extends EncryptedNumber {}
-export interface EncryptedAddress extends EncryptedNumber {}
-
 export type CoFheInItem = {
   ctHash: bigint;
   securityZone: number;
