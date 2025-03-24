@@ -307,44 +307,6 @@ describe("Local Testnet (Anvil) Tests", () => {
 
   // UNSEAL
 
-  // it("unsealCiphertext", async () => {
-  //   await initSdkWithBob();
-  //   const permit = (
-  //     await cofhejs.createPermit({
-  //       type: "self",
-  //       issuer: bobAddress,
-  //     })
-  //   ).data!;
-
-  //   // Bool
-  //   const boolValue = true;
-  //   const boolCiphertext = SealingKey.seal(
-  //     boolValue ? 1 : 0,
-  //     permit.sealingPair.publicKey,
-  //   );
-  //   const boolCleartext = permit.unsealCiphertext(boolCiphertext);
-  //   expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
-
-  //   // Uint
-  //   const uintValue = 937387;
-  //   const uintCiphertext = SealingKey.seal(
-  //     uintValue,
-  //     permit.sealingPair.publicKey,
-  //   );
-  //   const uintCleartext = permit.unsealCiphertext(uintCiphertext);
-  //   expect(uintCleartext).toEqual(BigInt(uintValue));
-
-  //   // Address
-  //   const bnToAddress = (bn: bigint) =>
-  //     getAddress(`0x${bn.toString(16).slice(-40)}`);
-  //   const addressValue = contractAddress;
-  //   const addressCiphertext = SealingKey.seal(
-  //     BigInt(addressValue),
-  //     permit.sealingPair.publicKey,
-  //   );
-  //   const addressCleartext = permit.unsealCiphertext(addressCiphertext);
-  //   expect(bnToAddress(addressCleartext)).toEqual(addressValue);
-  // });
   it("unseal", async () => {
     const permit = await Permit.create({
       type: "self",
@@ -357,13 +319,13 @@ describe("Local Testnet (Anvil) Tests", () => {
       boolValue ? 1 : 0,
       permit.sealingPair.publicKey,
     );
-    const boolCleartext = permit.unsealCiphertext(boolSealed);
+    const boolCleartext = permit.unseal(boolSealed);
     expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
 
     // Uint
     const uintValue = 937387n;
     const uintSealed = SealingKey.seal(uintValue, permit.sealingPair.publicKey);
-    const uintCleartext = permit.unsealCiphertext(uintSealed);
+    const uintCleartext = permit.unseal(uintSealed);
     expect(uintCleartext).toEqual(uintValue);
 
     // Address
@@ -372,7 +334,7 @@ describe("Local Testnet (Anvil) Tests", () => {
       BigInt(addressValue),
       permit.sealingPair.publicKey,
     );
-    const addressCleartext = permit.unsealCiphertext(addressSealed);
+    const addressCleartext = permit.unseal(addressSealed);
     expect(addressCleartext).toEqual(addressValue);
   });
 });

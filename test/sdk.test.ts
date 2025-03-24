@@ -349,7 +349,7 @@ describe("Sdk Tests", () => {
 
   // UNSEAL
 
-  it("unsealCiphertext", async () => {
+  it("unseal", async () => {
     await initSdkWithBob();
     const permit = expectResultSuccess(
       await cofhejs.createPermit({
@@ -364,13 +364,13 @@ describe("Sdk Tests", () => {
       boolValue ? 1 : 0,
       permit.sealingPair.publicKey,
     );
-    const boolCleartext = permit.unsealCiphertext(boolSealed);
+    const boolCleartext = permit.unseal(boolSealed);
     expect(boolCleartext).toEqual(boolValue ? 1n : 0n);
 
     // Uint
     const uintValue = 937387;
     const uintSealed = SealingKey.seal(uintValue, permit.sealingPair.publicKey);
-    const uintCleartext = permit.unsealCiphertext(uintSealed);
+    const uintCleartext = permit.unseal(uintSealed);
     expect(uintCleartext).toEqual(BigInt(uintValue));
 
     // Address
@@ -381,7 +381,7 @@ describe("Sdk Tests", () => {
       BigInt(addressValue),
       permit.sealingPair.publicKey,
     );
-    const addressCleartext = permit.unsealCiphertext(addressSealed);
+    const addressCleartext = permit.unseal(addressSealed);
     expect(bnToAddress(addressCleartext)).toEqual(addressValue);
   });
 

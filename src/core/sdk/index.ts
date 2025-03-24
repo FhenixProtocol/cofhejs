@@ -509,7 +509,7 @@ export async function unseal<U extends FheTypes>(
     return ResultErr("unseal :: sealed data not found");
   }
 
-  const unsealed = permit.unsealCiphertext(sealed);
+  const unsealed = permit.unseal(sealed);
   console.log("unsealed", unsealed);
 
   if (!isValidUtype(utype)) {

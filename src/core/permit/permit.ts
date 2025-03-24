@@ -418,7 +418,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    * Use the privateKey of `permit.sealingPair` to unseal `ciphertext` returned from the Fhenix chain.
    * Useful when not using `SealedItem` structs and need to unseal an individual ciphertext.
    */
-  unsealCiphertext = (ciphertext: EthEncryptedData): bigint => {
+  unseal = (ciphertext: EthEncryptedData): bigint => {
     return this.sealingPair.unseal(ciphertext);
   };
 

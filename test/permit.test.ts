@@ -80,7 +80,7 @@ describe("Permit Tests", () => {
     // Sealing pair can decrypt
     const value = 937387;
     const ciphertext = SealingKey.seal(value, permit.sealingPair.publicKey);
-    const cleartext = permit.unsealCiphertext(ciphertext);
+    const cleartext = permit.unseal(ciphertext);
     expect(cleartext).to.eq(BigInt(value));
   });
   it("create (sharing)", async () => {
@@ -209,7 +209,7 @@ describe("Permit Tests", () => {
       boolValue ? 1 : 0,
       permit.sealingPair.publicKey,
     );
-    const boolCleartext = permit.unsealCiphertext(boolCiphertext);
+    const boolCleartext = permit.unseal(boolCiphertext);
     expect(boolCleartext).to.eq(boolValue ? 1n : 0n);
 
     // Uint
@@ -218,7 +218,7 @@ describe("Permit Tests", () => {
       uintValue,
       permit.sealingPair.publicKey,
     );
-    const uintCleartext = permit.unsealCiphertext(uintCiphertext);
+    const uintCleartext = permit.unseal(uintCiphertext);
     expect(uintCleartext).to.eq(BigInt(uintValue));
 
     // Address
@@ -229,7 +229,7 @@ describe("Permit Tests", () => {
       BigInt(addressValue),
       permit.sealingPair.publicKey,
     );
-    const addressCleartext = permit.unsealCiphertext(addressCiphertext);
+    const addressCleartext = permit.unseal(addressCiphertext);
     expect(bnToAddress(addressCleartext)).to.eq(addressValue);
   });
 
