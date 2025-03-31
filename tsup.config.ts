@@ -1,4 +1,6 @@
 import { defineConfig } from "tsup";
+import fs from "fs";
+import path from "path";
 
 export default defineConfig({
   entry: {
@@ -17,6 +19,22 @@ export default defineConfig({
       ...options.loader,
       ".wasm": "file",
     };
+  },
+  async onSuccess() {
+    console.log("@@@ SUCCESS @@@");
+    const tfheDir = path.resolve("node_modules/tfhe");
+    const destDir = path.resolve("dist");
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    
+    // Copy the tfhe.js file
+    fs.copyFileSync(
+      path.join(tfheDir, "tfhe.js"),
+      path.join(destDir, "tfhe.js")
+    );
+
+
   },
   outDir: "dist",
   treeshake: true,

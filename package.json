@@ -28,6 +28,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "build:web": "tsup --entry ./src/web/index.ts --platform browser",
     "dev": "tsup --watch",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build",
@@ -57,6 +58,7 @@
   "homepage": "https://github.com/FhenixProtocol/cofhejs#readme",
   "dependencies": {
     "@types/node": "^20.0.0",
+    "idb-keyval": "^6.2.1",
     "immer": "^10.1.1",
     "node-tfhe": "0.11.1",
     "tfhe": "0.11.1",
