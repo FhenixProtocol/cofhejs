@@ -27,8 +27,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "prebuild": "npm run clean",
+    "build": "npm run prebuild && npm run build:web && npm run build:node",
     "build:web": "tsup --config tsup.config.ts --entry.web=./src/web/index.ts --platform=browser",
+    "build:node": "tsup --config tsup.config.ts --entry.node=./src/node/index.ts --platform=node",
     "dev": "tsup --watch",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build",

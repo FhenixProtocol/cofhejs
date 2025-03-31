@@ -11,7 +11,7 @@ export default defineConfig({
   dts: true,
   splitting: false,
   sourcemap: true,
-  clean: true,
+  clean: false,
   external: ["tfhe", "node-tfhe"],
   esbuildOptions(options) {
     options.assetNames = "assets/[name]";
