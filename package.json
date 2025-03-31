@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "build:web": "tsup --entry ./src/web/index.ts --platform browser",
+    "build:web": "tsup --config tsup.config.ts --entry.web=./src/web/index.ts --platform=browser",
     "dev": "tsup --watch",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build",
