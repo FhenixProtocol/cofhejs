@@ -15,17 +15,14 @@ import {
   SerializedPermit,
   AbstractSigner,
   EIP712Domain,
+  AbstractProvider,
 } from "../../types";
 import {
   EthEncryptedData,
   GenerateSealingKey,
   SealingKey,
 } from "../sdk/sealing";
-import {
-  ACLEip712DomainFnSig,
-  TaskManagerAbi,
-  TaskManagerAddress,
-} from "./consts";
+import { fnEip712DomainIface, TaskManagerAddress, fnAclIface } from "./consts";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**
@@ -137,10 +134,9 @@ export class Permit implements PermitInterface, PermitMetadata {
   static async createAndSign(
     options: PermitOptions,
     signer: AbstractSigner | undefined,
-    rpcUrl: string,
   ) {
     const permit = await Permit.create(options);
-    await permit.sign(signer, rpcUrl);
+    await permit.sign(signer);
     return permit;
   }
 
@@ -307,19 +303,27 @@ export class Permit implements PermitInterface, PermitMetadata {
    * @returns {EIP712Domain} - The EIP712 domain for the given chainId
    */
   fetchEIP712Domain = async (
-    provider: JsonRpcProvider,
+    provider: AbstractProvider,
   ): Promise<EIP712Domain> => {
-    const taskManager = new ethers.Contract(
-      TaskManagerAddress,
-      TaskManagerAbi,
-      provider,
-    );
-    const aclAddress = await taskManager.acl();
-
-    const aclEip712DomainRaw = await provider.call({
-      to: aclAddress,
-      data: ACLEip712DomainFnSig,
+    const taskManagerInterface = new ethers.Interface(fnAclIface);
+    const aclCallData = taskManagerInterface.encodeFunctionData("acl");
+    const aclAddressResult = await provider.call({
+      to: TaskManagerAddress,
+      data: aclCallData,
     });
+    const [aclAddress] = taskManagerInterface.decodeFunctionResult(
+      "acl",
+      aclAddressResult,
+    );
+
+    const domainIface = new ethers.Interface(fnEip712DomainIface);
+    const domainCalldata = domainIface.encodeFunctionData("eip712Domain");
+
+    const domainResult = await provider.call({
+      to: aclAddress,
+      data: domainCalldata,
+    });
+
     const [
       _fields,
       name,
@@ -328,18 +332,7 @@ export class Permit implements PermitInterface, PermitMetadata {
       verifyingContract,
       _salt,
       _extensions,
-    ] = ethers.AbiCoder.defaultAbiCoder().decode(
-      [
-        "bytes1",
-        "string",
-        "string",
-        "uint256",
-        "address",
-        "bytes32",
-        "uint256[]",
-      ],
-      aclEip712DomainRaw,
-    ) as unknown as [any, string, string, bigint, string, any, any];
+    ] = domainIface.decodeFunctionResult("eip712Domain", domainResult);
 
     return {
       name,
@@ -368,7 +361,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    * @param {AbstractProvider} provider - The provider to fetch the EIP712 domain from
    * @returns {boolean} - True if the domain matches, false otherwise
    */
-  checkSignedDomainValid = async (provider: JsonRpcProvider) => {
+  checkSignedDomainValid = async (provider: AbstractProvider) => {
     if (this._signedDomain == null) return false;
     const domain = await this.fetchEIP712Domain(provider);
     return this.matchesDomain(domain);
@@ -382,7 +375,7 @@ export class Permit implements PermitInterface, PermitMetadata {
    *
    * @param {AbstractSigner} signer - Signer responsible for signing the EIP712 permit signature, throws if undefined
    */
-  sign = async (signer: AbstractSigner | undefined, rpcUrl: string) => {
+  sign = async (signer: AbstractSigner | undefined) => {
     if (signer == null)
       throw new Error(
         "Permit :: sign - signer undefined, you must pass in a `signer` for the connected user to create a permit signature",
@@ -393,9 +386,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     if (this.type === "sharing") primaryType = "PermissionedV2IssuerShared";
     if (this.type === "recipient") primaryType = "PermissionedV2Recipient";
 
-    const domain = await this.fetchEIP712Domain(
-      new ethers.JsonRpcProvider(rpcUrl),
-    );
+    const domain = await this.fetchEIP712Domain(signer.provider);
     const { types, message } = this.getSignatureParams(primaryType);
 
     const signature = await signer.signTypedData(
