@@ -244,10 +244,15 @@ async function mockZkVerifySign(
   });
 
   // Decode zkVerifyCalcCtHashesPacked result
-  const [ctHashes] = ethers.AbiCoder.defaultAbiCoder().decode(
-    ["uint256[]"],
+  console.log(
+    "zkVerifyCalcCtHashesPackedResult",
     zkVerifyCalcCtHashesPackedResult,
   );
+  const [ctHashes] = zkVerifierIface.decodeFunctionResult(
+    "zkVerifyCalcCtHashesPacked",
+    zkVerifyCalcCtHashesPackedResult,
+  );
+  console.log("ctHashes", ctHashes);
 
   const itemsWithCtHashes = items.map((item, index) => ({
     ...item,

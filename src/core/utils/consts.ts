@@ -46,8 +46,5 @@ export const mockZkVerifierIface = [
     uint8 securityZone,
     uint256 chainId
   ) public view returns (uint256[] memory ctHashes)`,
-  `function insertPackedCtHashes(
-    uint256[] memory ctHashes,
-    uint8[] memory utypes
-  ) public`,
+  "function insertPackedCtHashes(uint256[] ctHashes, uint256[] values) public",
 ];

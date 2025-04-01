@@ -136,7 +136,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
   });
 
-  it("encrypt", { timeout: 320000 }, async () => {
+  it.only("encrypt", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     await cofhejs.createPermit({
@@ -172,7 +172,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
   });
 
-  it.only("querySealOutput test", async () => {
+  it("querySealOutput test", async () => {
     await initSdkWithBob();
 
     const permit = expectResultSuccess(
