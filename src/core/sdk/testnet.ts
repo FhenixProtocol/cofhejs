@@ -494,20 +494,17 @@ export async function mockSealOutput<U extends FheTypes>(
     data: querySealOutputCallData,
   });
 
-  const [sealedResult] = await queryDecrypterIface.decodeFunctionResult(
-    "querySealOutput",
-    querySealOutputResult,
-  );
+  console.log("querySealOutputResult", querySealOutputResult);
 
-  const {
-    allowed,
-    error,
-    result,
-  }: { allowed: boolean; error: string; result: string } = sealedResult;
+  const [allowed, error, result] =
+    await queryDecrypterIface.decodeFunctionResult(
+      "querySealOutput",
+      querySealOutputResult,
+    );
 
   console.log("sealedResult", allowed, error, result);
 
-  if (error != null) {
+  if (error != "") {
     return ResultErr(
       `mockSealOutput :: querySealOutput onchain error - ${error}`,
     );

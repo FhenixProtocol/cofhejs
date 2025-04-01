@@ -136,7 +136,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
   });
 
-  it.only("encrypt", { timeout: 320000 }, async () => {
+  it("encrypt", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     await cofhejs.createPermit({
@@ -203,18 +203,18 @@ describe("Local Testnet (Anvil) Tests", () => {
   //   await testDecrypt(jsonRpcProvider, FheTypes.Bool, permit.getPermission());
   // });
 
-  it("full flow", { timeout: 320000 }, async () => {
+  it.only("full flow", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     const logState = (state: EncryptStep) => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    // const inEncryptUint32 = expectResultSuccess(
-    //   await cofhejs.encrypt(logState, [Encryptable.uint32(5n)] as const),
-    // )[0];
+    const inEncryptUint32 = expectResultSuccess(
+      await cofhejs.encrypt(logState, [Encryptable.uint32(5n)] as const),
+    )[0];
 
-    // console.log("inEncryptUint32", inEncryptUint32);
+    console.log("inEncryptUint32", inEncryptUint32);
 
     const exampleContractAddress = "0x0000000000000000000000000000000000000300";
     const exampleContractAbi = [
@@ -275,7 +275,8 @@ describe("Local Testnet (Anvil) Tests", () => {
       wallet,
     );
 
-    const tx = await exampleContract.setNumberTrivial(50);
+    // const tx = await exampleContract.setNumberTrivial(50);
+    const tx = await exampleContract.setNumber(inEncryptUint32);
     await tx.wait();
     console.log("tx hash", tx.hash);
     const ctHash = await exampleContract.numberHash();
@@ -288,7 +289,7 @@ describe("Local Testnet (Anvil) Tests", () => {
       }),
     );
 
-    const unsealed = await cofhejs.unseal(0n, FheTypes.Bool);
+    const unsealed = await cofhejs.unseal(ctHash, FheTypes.Uint32);
     console.log("unsealed", unsealed);
     if (unsealed.error != null) throw unsealed.error;
   });
