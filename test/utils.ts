@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { JsonRpcProvider, AbiCoder, ethers } from "ethers";
+import { ethers } from "ethers";
 import { AbstractProvider, AbstractSigner, Result } from "../src/types";
 import { expect } from "vitest";
 

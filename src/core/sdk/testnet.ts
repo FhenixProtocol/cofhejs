@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ethers, JsonRpcProvider } from "ethers";
+import { ethers } from "ethers";
 import { encryptExtract, encryptReplace } from ".";
 import {
   AbstractProvider,
@@ -426,6 +426,9 @@ export async function testSealOutput(
   console.log("mock unsealed", unsealed);
 }
 
+// TODO: Re-enable after testSealOutput is working
+// - architect_dev 2025-04-01
+//
 // export async function testDecrypt(
 //   provider: JsonRpcProvider,
 //   utype: FheTypes,

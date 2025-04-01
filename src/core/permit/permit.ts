@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ethers, id, JsonRpcProvider, keccak256, ZeroAddress } from "ethers";
+import { ethers, id, keccak256, ZeroAddress } from "ethers";
 import {
   getSignatureTypesAndMessage,
   PermitSignaturePrimaryType,
