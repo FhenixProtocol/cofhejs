@@ -2,7 +2,7 @@
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
 import { fromHexString } from "../utils/utils";
-import { PUBLIC_KEY_LENGTH_MIN } from "./consts";
+import { PUBLIC_KEY_LENGTH_MIN } from "../utils/consts";
 import {
   AbstractProvider,
   AbstractSigner,

@@ -12,7 +12,7 @@ import {
   MAX_UINT64,
   MAX_UINT128,
   MAX_UINT256,
-} from "../core/sdk/consts";
+} from "../core/utils/consts";
 import {
   toBigIntOrThrow,
   validateBigIntInRange,

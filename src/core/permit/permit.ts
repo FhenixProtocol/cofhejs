@@ -22,7 +22,11 @@ import {
   GenerateSealingKey,
   SealingKey,
 } from "../sdk/sealing";
-import { fnEip712DomainIface, TaskManagerAddress, fnAclIface } from "./consts";
+import {
+  fnEip712DomainIface,
+  TaskManagerAddress,
+  fnAclIface,
+} from "../utils/consts";
 
 export class Permit implements PermitInterface, PermitMetadata {
   /**
