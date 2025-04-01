@@ -59,6 +59,16 @@ export class MockSigner implements AbstractSigner {
     return await this.provider.wallet.signTypedData(domain, types, value);
   };
 
+  sendTransaction = async (tx: {
+    to: string;
+    data: string;
+  }): Promise<string> => {
+    console.log("sendTransaction tx", tx);
+    const response = await this.provider.wallet.sendTransaction(tx);
+    console.log("sendTransaction response", response);
+    return response.hash;
+  };
+
   getAddress = async (): Promise<string> => {
     return this.provider.wallet.getAddress();
   };
@@ -77,8 +87,8 @@ export class MockProvider implements AbstractProvider {
     chainId?: bigint,
   ) {
     this.publicKey = pk;
-    this.wallet = wallet ?? BobWallet;
     this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.wallet = (wallet ?? BobWallet).connect(this.provider);
     this.chainId = chainId ?? 1n;
   }
 
@@ -91,21 +101,22 @@ export class MockProvider implements AbstractProvider {
   }
 
   async send(method: string, params: unknown[] | undefined): Promise<any> {
-    if (method === "eth_chainId") {
-      return this.chainId;
-    }
+    return await this.provider.send(method, params ?? []);
+    // if (method === "eth_chainId") {
+    //   return this.chainId;
+    // }
 
-    if (method === "eth_call") {
-      const { to, data } = (params?.[0] ?? {
-        to: "undefined",
-        data: "undefined",
-      }) as { to: string; data: string };
-      return this.call({ to, data });
-    }
+    // if (method === "eth_call") {
+    //   const { to, data } = (params?.[0] ?? {
+    //     to: "undefined",
+    //     data: "undefined",
+    //   }) as { to: string; data: string };
+    //   return this.call({ to, data });
+    // }
 
-    throw new Error(
-      `MockProvider :: send :: Method not implemented: ${method}`,
-    );
+    // throw new Error(
+    //   `MockProvider :: send :: Method not implemented: ${method}`,
+    // );
   }
 
   async getSigner(): Promise<MockSigner> {

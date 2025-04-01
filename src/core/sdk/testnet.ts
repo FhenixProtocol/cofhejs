@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 import { encryptExtract, encryptReplace } from ".";
 import {
   AbstractProvider,
+  AbstractSigner,
   CoFheInItem,
   EncryptableItem,
   Encrypted_Inputs,
@@ -208,6 +209,7 @@ export async function checkIsTestnet(
 }
 
 async function mockZkVerifySign(
+  signer: AbstractSigner,
   provider: AbstractProvider,
   user: string,
   items: EncryptableItem[],
@@ -259,23 +261,36 @@ async function mockZkVerifySign(
     ctHash: ctHashes[index],
   }));
 
+  console.log("itemsWithCtHashes", itemsWithCtHashes);
+
   try {
     // Construct insertPackedCtHashes call data
     const insertPackedCtHashesCallData = zkVerifierIface.encodeFunctionData(
       "insertPackedCtHashes",
       [
         itemsWithCtHashes.map(({ ctHash }) => ctHash.toString()),
-        itemsWithCtHashes.map(({ utype }) => utype),
+        itemsWithCtHashes.map(({ data }) => data),
       ],
     );
 
     // Call insertPackedCtHashes
-    const insertPackedCtHashesResult = await provider.call({
+    const signerAddress = await signer.getAddress();
+    const txCount = await provider.send("eth_getTransactionCount", [
+      signerAddress,
+      "latest",
+    ]);
+    console.log(`Transaction count for ${signerAddress}: ${txCount}`);
+
+    const insertPackedCtHashesResult = await signer.sendTransaction({
       to: MockZkVerifierAddress,
       data: insertPackedCtHashesCallData,
     });
 
-    console.log({ insertPackedCtHashesResult });
+    const receipt = await provider.send("eth_getTransactionReceipt", [
+      insertPackedCtHashesResult,
+    ]);
+
+    console.log({ insertPackedCtHashesResult, receipt });
   } catch (err) {
     console.log("mockZkVerifySign :: insertPackedCtHashes :: err:", err);
     return ResultErr(`mockZkVerifySign :: insertPackedCtHashes :: err: ${err}`);
@@ -304,6 +319,8 @@ async function mockZkVerifySign(
         signature: signature,
       });
     }
+
+    console.log("results", results);
     return ResultOk(results);
   } catch (err) {
     console.log("mockZkVerifySign :: err:", err);
@@ -329,6 +346,8 @@ export async function mockEncrypt<T extends any[]>(
   if (state.provider == null)
     return ResultErr("encrypt :: provider uninitialized");
 
+  if (state.signer == null) return ResultErr("encrypt :: signer uninitialized");
+
   const encryptableItems = encryptExtract(item);
 
   setState(EncryptStep.Pack);
@@ -345,6 +364,7 @@ export async function mockEncrypt<T extends any[]>(
   await sleep(2000);
 
   const signedResults = await mockZkVerifySign(
+    state.signer,
     state.provider,
     state.account,
     encryptableItems,
@@ -472,6 +492,8 @@ export async function mockSealOutput<U extends FheTypes>(
   if (!domainValid) {
     return ResultErr("mockSealOutput :: permit domain invalid");
   }
+
+  console.log("mockSealOutput :: ctHash", ctHash);
 
   // const queryDecrypter = new ethers.Contract(
   //   mockQueryDecrypterAddress,

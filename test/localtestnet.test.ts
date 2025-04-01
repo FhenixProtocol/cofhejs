@@ -211,7 +211,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     };
 
     const inEncryptUint32 = expectResultSuccess(
-      await cofhejs.encrypt(logState, [Encryptable.uint32(5n)] as const),
+      await cofhejs.encrypt(logState, [Encryptable.uint32(25n)] as const),
     )[0];
 
     console.log("inEncryptUint32", inEncryptUint32);
@@ -275,8 +275,12 @@ describe("Local Testnet (Anvil) Tests", () => {
       wallet,
     );
 
-    // const tx = await exampleContract.setNumberTrivial(50);
-    const tx = await exampleContract.setNumber(inEncryptUint32);
+    // Get nonce for Bob's wallet
+    const nonce = await provider.getTransactionCount(bobAddress);
+    console.log("Bob nonce", nonce);
+
+    // const tx = await exampleContract.setNumberTrivial(50, { nonce });
+    const tx = await exampleContract.setNumber(inEncryptUint32, { nonce });
     await tx.wait();
     console.log("tx hash", tx.hash);
     const ctHash = await exampleContract.numberHash();
