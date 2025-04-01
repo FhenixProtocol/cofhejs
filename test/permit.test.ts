@@ -114,7 +114,7 @@ describe("Permit Tests", () => {
       issuer: bobAddress,
     });
 
-    await permit.sign(bobSigner, rpcUrl);
+    await permit.sign(bobSigner);
 
     expect(permit.issuerSignature).to.not.eq("0x");
     expect(permit.recipientSignature).to.eq("0x");
@@ -132,7 +132,7 @@ describe("Permit Tests", () => {
       recipient: adaAddress,
     });
 
-    await permit.sign(bobSigner, rpcUrl);
+    await permit.sign(bobSigner);
 
     expect(permit.issuerSignature).to.not.eq("0x");
     expect(permit.recipientSignature).to.eq("0x");
@@ -147,7 +147,7 @@ describe("Permit Tests", () => {
     expect(bobPermit.issuerSignature).to.eq("0x");
     expect(bobPermit.recipientSignature).to.eq("0x");
 
-    await bobPermit.sign(bobSigner, rpcUrl);
+    await bobPermit.sign(bobSigner);
 
     expect(bobPermit.issuerSignature).to.not.eq("0x");
     expect(bobPermit.recipientSignature).to.eq("0x");
@@ -160,7 +160,7 @@ describe("Permit Tests", () => {
     expect(adaPermit.issuerSignature).to.not.eq("0x");
     expect(adaPermit.recipientSignature).to.eq("0x");
 
-    await adaPermit.sign(adaSigner, rpcUrl);
+    await adaPermit.sign(adaSigner);
 
     expect(adaPermit.issuerSignature).to.not.eq("0x");
     expect(adaPermit.recipientSignature).to.not.eq("0x");
@@ -173,7 +173,7 @@ describe("Permit Tests", () => {
       issuer: bobAddress,
     });
 
-    await permit.sign(bobSigner, rpcUrl);
+    await permit.sign(bobSigner);
 
     const { name, type, sealingPair, ...iface } = permit.getInterface();
     const { sealingKey, ...permission } = permit.getPermission();
@@ -253,7 +253,7 @@ describe("Permit Tests", () => {
       issuer: bobAddress,
     });
 
-    await permit.sign(bobSigner, rpcUrl);
+    await permit.sign(bobSigner);
 
     const serialized = permit.serialize();
 

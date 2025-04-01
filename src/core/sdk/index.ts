@@ -73,7 +73,6 @@ const _checkInitialized = (
     coFheUrl?: boolean;
     verifierUrl?: boolean;
     thresholdNetworkUrl?: boolean;
-    rpcUrl?: boolean;
   },
 ) => {
   if (
@@ -111,11 +110,6 @@ const _checkInitialized = (
   if (options?.signer !== false && !state.signerInitialized)
     return ResultErr(
       "cofhejs not initialized with a valid signer. Use `cofhejs.initialize(...)` with a valid signer that satisfies `AbstractSigner`.",
-    );
-
-  if (options?.rpcUrl !== false && !state.rpcUrl)
-    return ResultErr(
-      "cofhejs not initialized with a valid rpcUrl. Use `cofhejs.initialize(...)` with a valid rpcUrl.",
     );
 
   return ResultOk(null);

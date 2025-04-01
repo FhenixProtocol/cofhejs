@@ -25,7 +25,6 @@ export type InitializationParams = {
   coFheUrl?: string;
   verifierUrl?: string;
   thresholdNetworkUrl?: string;
-  rpcUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;
 };
