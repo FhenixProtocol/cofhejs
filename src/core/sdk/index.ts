@@ -150,11 +150,7 @@ export const createPermit = async (
 
   let permit: Permit;
   try {
-    permit = await Permit.createAndSign(
-      optionsWithDefaults,
-      state.signer,
-      state.rpcUrl!,
-    );
+    permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
   } catch (e) {
     console.log("createPermit :: e", e);
     return ResultErr(`${createPermit.name} :: ${e}`);
@@ -472,8 +468,11 @@ export async function unseal<U extends FheTypes>(
     );
   }
 
+  const provider = _sdkStore.getState().provider;
+  if (provider == null) return ResultErr("unseal :: provider uninitialized");
+
   if (_sdkStore.getState().isTestnet) {
-    return mockSealOutput(_sdkStore.getState().rpcUrl!, ctHash, utype, permit);
+    return mockSealOutput(provider, ctHash, utype, permit);
   }
 
   const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl;
@@ -549,7 +548,7 @@ export async function decrypt<U extends FheTypes>(
   }
 
   if (_sdkStore.getState().isTestnet) {
-    return mockDecrypt(_sdkStore.getState().rpcUrl!, ctHash, utype, permit);
+    return mockDecrypt(_sdkStore.getState().provider!, ctHash, utype, permit);
   }
 
   const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl;

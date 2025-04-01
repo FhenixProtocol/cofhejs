@@ -20,12 +20,14 @@ import { sleep } from "../utils";
 import { _sdkStore } from "./store";
 import { Permit } from "../permit";
 import { convertViaUtype, isValidUtype } from "../utils/utype";
+import {
+  fnExistsIface,
+  MockQueryDecrypterAddress,
+  MockZkVerifierAddress,
+  mockZkVerifierIface,
+  MockZkVerifierSignerPkey,
+} from "../utils/consts";
 
-const mockZkVerifierAddress = "0x0000000000000000000000000000000000000100";
-const mockQueryDecrypterAddress = "0x0000000000000000000000000000000000000200";
-const mockZkVerifierSignerPkey =
-  "0x6c8d7f768a6bb4aafe85e8a2f5a9680355239c7e14646ed62b044e39de154512";
-const existsSignature = "0x267c4ae4";
 const mockExampleAbi = [
   {
     type: "function",
@@ -173,24 +175,31 @@ export async function checkIsTestnet(
 ): Promise<boolean> {
   // Check if testnet mock contracts are deployed by attempting to call them
   try {
+    const existsIface = new ethers.Interface(fnExistsIface);
+    const existsCallData = existsIface.encodeFunctionData("exists");
+
     // Call with empty data to check if contracts exist
     const zkVerifierExistsRaw = await provider.call({
-      to: mockZkVerifierAddress,
-      data: existsSignature,
+      to: MockZkVerifierAddress,
+      data: existsCallData,
     });
     const queryDecrypterExistsRaw = await provider.call({
-      to: mockQueryDecrypterAddress,
-      data: existsSignature,
+      to: MockQueryDecrypterAddress,
+      data: existsCallData,
     });
 
-    const [zkVerifierExists] = ethers.AbiCoder.defaultAbiCoder().decode(
-      ["bool"],
+    console.log({ zkVerifierExistsRaw, queryDecrypterExistsRaw });
+
+    const [zkVerifierExists] = existsIface.decodeFunctionResult(
+      "exists",
       zkVerifierExistsRaw,
     );
-    const [queryDecrypterExists] = ethers.AbiCoder.defaultAbiCoder().decode(
-      ["bool"],
+    const [queryDecrypterExists] = existsIface.decodeFunctionResult(
+      "exists",
       queryDecrypterExistsRaw,
     );
+
+    console.log({ zkVerifierExists, queryDecrypterExists });
 
     return zkVerifierExists && queryDecrypterExists;
   } catch (err) {
@@ -198,146 +207,46 @@ export async function checkIsTestnet(
   }
 }
 
-const MockZkVerifierAbi = [
-  {
-    type: "function",
-    name: "exists",
-    inputs: [],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "pure",
-  },
-  {
-    type: "function",
-    name: "insertCtHash",
-    inputs: [
-      { name: "ctHash", type: "uint256", internalType: "uint256" },
-      { name: "value", type: "uint256", internalType: "uint256" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "insertPackedCtHashes",
-    inputs: [
-      { name: "ctHashes", type: "uint256[]", internalType: "uint256[]" },
-      { name: "values", type: "uint256[]", internalType: "uint256[]" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "zkVerify",
-    inputs: [
-      { name: "value", type: "uint256", internalType: "uint256" },
-      { name: "utype", type: "uint8", internalType: "uint8" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "securityZone", type: "uint8", internalType: "uint8" },
-      { name: "", type: "uint256", internalType: "uint256" },
-    ],
-    outputs: [
-      {
-        name: "",
-        type: "tuple",
-        internalType: "struct EncryptedInput",
-        components: [
-          { name: "ctHash", type: "uint256", internalType: "uint256" },
-          { name: "securityZone", type: "uint8", internalType: "uint8" },
-          { name: "utype", type: "uint8", internalType: "uint8" },
-          { name: "signature", type: "bytes", internalType: "bytes" },
-        ],
-      },
-    ],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "zkVerifyCalcCtHash",
-    inputs: [
-      { name: "value", type: "uint256", internalType: "uint256" },
-      { name: "utype", type: "uint8", internalType: "uint8" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "securityZone", type: "uint8", internalType: "uint8" },
-      { name: "", type: "uint256", internalType: "uint256" },
-    ],
-    outputs: [{ name: "ctHash", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "zkVerifyCalcCtHashesPacked",
-    inputs: [
-      { name: "values", type: "uint256[]", internalType: "uint256[]" },
-      { name: "utypes", type: "uint8[]", internalType: "uint8[]" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "securityZone", type: "uint8", internalType: "uint8" },
-      { name: "chainId", type: "uint256", internalType: "uint256" },
-    ],
-    outputs: [
-      { name: "ctHashes", type: "uint256[]", internalType: "uint256[]" },
-    ],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "zkVerifyPacked",
-    inputs: [
-      { name: "values", type: "uint256[]", internalType: "uint256[]" },
-      { name: "utypes", type: "uint8[]", internalType: "uint8[]" },
-      { name: "user", type: "address", internalType: "address" },
-      { name: "securityZone", type: "uint8", internalType: "uint8" },
-      { name: "chainId", type: "uint256", internalType: "uint256" },
-    ],
-    outputs: [
-      {
-        name: "inputs",
-        type: "tuple[]",
-        internalType: "struct EncryptedInput[]",
-        components: [
-          { name: "ctHash", type: "uint256", internalType: "uint256" },
-          { name: "securityZone", type: "uint8", internalType: "uint8" },
-          { name: "utype", type: "uint8", internalType: "uint8" },
-          { name: "signature", type: "bytes", internalType: "bytes" },
-        ],
-      },
-    ],
-    stateMutability: "nonpayable",
-  },
-  { type: "error", name: "InvalidInputs", inputs: [] },
-] as const;
-
-const mockAnvilSenderPkey =
-  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-
 async function mockZkVerifySign(
-  provider: JsonRpcProvider,
+  provider: AbstractProvider,
   user: string,
   items: EncryptableItem[],
   securityZone: number,
 ): Promise<Result<VerifyResult[]>> {
   // Create ethers wallet with mockZkVerifierSignerPkey
-  const wallet = new ethers.Wallet(mockZkVerifierSignerPkey, provider);
-  const sender = new ethers.Wallet(mockAnvilSenderPkey, provider);
+  const zkVerifierSigner = new ethers.Wallet(MockZkVerifierSignerPkey);
 
   // Create array to store results
   const results = [];
 
-  // Attach to MockZkVerifier contract
-  const mockZkVerifier = new ethers.Contract(
-    mockZkVerifierAddress,
-    MockZkVerifierAbi,
-    sender,
+  // Fetch chainId
+  const chainId = await provider.getChainId();
+
+  // Create MockZkVerifier iface
+  const zkVerifierIface = new ethers.Interface(mockZkVerifierIface);
+
+  // Construct zkVerifyCalcCtHashesPacked call data
+  const zkVerifyCalcCtHashesPackedCallData = zkVerifierIface.encodeFunctionData(
+    "zkVerifyCalcCtHashesPacked",
+    [
+      items.map((item) => BigInt(item.data)),
+      items.map((item) => item.utype),
+      user,
+      securityZone,
+      BigInt(chainId),
+    ],
   );
 
-  const chainId = (await provider.getNetwork()).chainId;
+  // Call zkVerifyCalcCtHashesPacked
+  const zkVerifyCalcCtHashesPackedResult = await provider.call({
+    to: MockZkVerifierAddress,
+    data: zkVerifyCalcCtHashesPackedCallData,
+  });
 
-  const ctHashes: bigint[] = await mockZkVerifier.zkVerifyCalcCtHashesPacked(
-    items.map((item) => BigInt(item.data)),
-    items.map((item) => item.utype),
-    user,
-    securityZone,
-    BigInt(chainId),
+  // Decode zkVerifyCalcCtHashesPacked result
+  const [ctHashes] = ethers.AbiCoder.defaultAbiCoder().decode(
+    ["uint256[]"],
+    zkVerifyCalcCtHashesPackedResult,
   );
 
   const itemsWithCtHashes = items.map((item, index) => ({
@@ -346,25 +255,30 @@ async function mockZkVerifySign(
   }));
 
   try {
-    const tx = await mockZkVerifier.insertPackedCtHashes(
-      itemsWithCtHashes.map(({ ctHash }) => ctHash.toString()),
-      itemsWithCtHashes.map(({ utype }) => utype),
+    // Construct insertPackedCtHashes call data
+    const insertPackedCtHashesCallData = zkVerifierIface.encodeFunctionData(
+      "insertPackedCtHashes",
+      [
+        itemsWithCtHashes.map(({ ctHash }) => ctHash.toString()),
+        itemsWithCtHashes.map(({ utype }) => utype),
+      ],
     );
-    await tx.wait();
+
+    // Call insertPackedCtHashes
+    const insertPackedCtHashesResult = await provider.call({
+      to: MockZkVerifierAddress,
+      data: insertPackedCtHashesCallData,
+    });
+
+    console.log({ insertPackedCtHashesResult });
   } catch (err) {
     console.log("mockZkVerifySign :: insertPackedCtHashes :: err:", err);
     return ResultErr(`mockZkVerifySign :: insertPackedCtHashes :: err: ${err}`);
   }
 
+  // Sign the items
   try {
     for (const item of itemsWithCtHashes) {
-      const exists = await mockZkVerifier.exists();
-      if (!exists) {
-        return ResultErr("mockZkVerifySign :: mockZkVerifier does not exist");
-      }
-
-      // Store and fetch the ctHash
-
       // Pack the data into bytes and hash it
       const packedData = ethers.solidityPacked(
         ["uint256", "int32", "uint8"],
@@ -376,7 +290,7 @@ async function mockZkVerifySign(
       const ethSignedHash = ethers.hashMessage(ethers.getBytes(messageHash));
 
       // Sign the message
-      const signature = await wallet.signMessage(
+      const signature = await zkVerifierSigner.signMessage(
         ethers.getBytes(ethSignedHash),
       );
 
@@ -407,9 +321,8 @@ export async function mockEncrypt<T extends any[]>(
   if (state.chainId == null)
     return ResultErr("encrypt :: chainId uninitialized");
 
-  if (state.rpcUrl == null) return ResultErr("encrypt :: rpcUrl uninitialized");
-
-  const provider = new ethers.JsonRpcProvider(state.rpcUrl);
+  if (state.provider == null)
+    return ResultErr("encrypt :: provider uninitialized");
 
   const encryptableItems = encryptExtract(item);
 
@@ -427,7 +340,7 @@ export async function mockEncrypt<T extends any[]>(
   await sleep(2000);
 
   const signedResults = await mockZkVerifySign(
-    provider,
+    state.provider,
     state.account,
     encryptableItems,
     securityZone,
@@ -461,7 +374,7 @@ export async function mockEncrypt<T extends any[]>(
 }
 
 export async function testSealOutput(
-  provider: JsonRpcProvider,
+  provider: AbstractProvider,
   utype: FheTypes,
   permission: Permission,
 ) {
@@ -472,26 +385,39 @@ export async function testSealOutput(
     to: mockExampleAddress,
     data: hashCallData,
   });
+  const [ctHash] = mockExampleIFace.decodeFunctionResult(
+    "numberHash",
+    hashResult,
+  );
 
   console.log({
     hashResult,
+    ctHash,
   });
 
-  const mockDecrypter = new ethers.Contract(
-    mockQueryDecrypterAddress,
-    mockQueryDecrypterAbi,
-    provider,
+  const queryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
+  const querySealOutputCallData = queryDecrypterIface.encodeFunctionData(
+    "querySealOutput",
+    [ctHash, utype, permission],
   );
 
-  const sealOutputResult = await mockDecrypter.querySealOutput(
-    hashResult,
-    utype,
-    permission,
+  const querySealOutputResult = await provider.call({
+    to: MockQueryDecrypterAddress,
+    data: querySealOutputCallData,
+  });
+
+  const [sealedResult] = await queryDecrypterIface.decodeFunctionResult(
+    "querySealOutput",
+    querySealOutputResult,
   );
 
-  console.log("query seal output result", sealOutputResult);
+  const {
+    allowed,
+    error,
+    result,
+  }: { allowed: boolean; error: string; result: string } = sealedResult;
 
-  const [_allowed, _error, result] = sealOutputResult;
+  console.log("sealedResult", allowed, error, result);
 
   const sealedBigInt = BigInt(result);
   const sealingKeyBigInt = BigInt(permission.sealingKey);
@@ -500,61 +426,69 @@ export async function testSealOutput(
   console.log("mock unsealed", unsealed);
 }
 
-export async function testDecrypt(
-  provider: JsonRpcProvider,
-  utype: FheTypes,
-  permission: Permission,
-) {
-  const mockExampleIFace = new ethers.Interface(mockExampleAbi);
+// export async function testDecrypt(
+//   provider: JsonRpcProvider,
+//   utype: FheTypes,
+//   permission: Permission,
+// ) {
+//   const mockExampleIFace = new ethers.Interface(mockExampleAbi);
 
-  const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
-  const hashResult = await provider.call({
-    to: mockExampleAddress,
-    data: hashCallData,
-  });
+//   const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
+//   const hashResult = await provider.call({
+//     to: mockExampleAddress,
+//     data: hashCallData,
+//   });
 
-  const mockDecrypter = new ethers.Contract(
-    mockQueryDecrypterAddress,
-    mockQueryDecrypterAbi,
-    provider,
-  );
+//   const mockDecrypter = new ethers.Contract(
+//     mockQueryDecrypterAddress,
+//     mockQueryDecrypterAbi,
+//     provider,
+//   );
 
-  const decryptResult = await mockDecrypter.queryDecrypt(
-    hashResult,
-    utype,
-    permission,
-  );
+//   const decryptResult = await mockDecrypter.queryDecrypt(
+//     hashResult,
+//     utype,
+//     permission,
+//   );
 
-  console.log("query decrypt result", decryptResult);
-}
+//   console.log("query decrypt result", decryptResult);
+// }
 
 export async function mockSealOutput<U extends FheTypes>(
-  rpcUrl: string,
+  provider: AbstractProvider,
   ctHash: bigint,
   utype: U,
   permit: Permit,
 ): Promise<Result<UnsealedItem<U>>> {
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
-
   const domainValid = await permit.checkSignedDomainValid(provider);
   if (!domainValid) {
     return ResultErr("mockSealOutput :: permit domain invalid");
   }
 
-  const queryDecrypter = new ethers.Contract(
-    mockQueryDecrypterAddress,
-    mockQueryDecrypterAbi,
-    provider,
-  );
+  // const queryDecrypter = new ethers.Contract(
+  //   mockQueryDecrypterAddress,
+  //   mockQueryDecrypterAbi,
+  //   provider,
+  // );
 
   const permission = permit.getPermission();
 
   console.log("permission", permission);
 
-  const sealedResult = await queryDecrypter.querySealOutput(
-    ctHash,
-    utype,
-    permission,
+  const queryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
+  const querySealOutputCallData = queryDecrypterIface.encodeFunctionData(
+    "querySealOutput",
+    [ctHash, utype, permission],
+  );
+
+  const querySealOutputResult = await provider.call({
+    to: MockQueryDecrypterAddress,
+    data: querySealOutputCallData,
+  });
+
+  const [sealedResult] = await queryDecrypterIface.decodeFunctionResult(
+    "querySealOutput",
+    querySealOutputResult,
   );
 
   const {
@@ -585,30 +519,38 @@ export async function mockSealOutput<U extends FheTypes>(
 }
 
 export async function mockDecrypt<U extends FheTypes>(
-  rpcUrl: string,
+  provider: AbstractProvider,
   ctHash: bigint,
   utype: U,
   permit: Permit,
 ): Promise<Result<UnsealedItem<U>>> {
-  const provider = new ethers.JsonRpcProvider(rpcUrl);
-
   const domainValid = await permit.checkSignedDomainValid(provider);
   if (!domainValid) {
     return ResultErr("mockDecrypt :: permit domain invalid");
   }
 
-  const queryDecrypter = new ethers.Contract(
-    mockQueryDecrypterAddress,
-    mockQueryDecrypterAbi,
-    provider,
-  );
+  // const queryDecrypter = new ethers.Contract(
+  //   mockQueryDecrypterAddress,
+  //   mockQueryDecrypterAbi,
+  //   provider,
+  // );
 
   const permission = permit.getPermission();
 
-  const decryptResult = await queryDecrypter.queryDecrypt(
-    ctHash,
-    utype,
-    permission,
+  const queryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
+  const queryDecryptCallData = queryDecrypterIface.encodeFunctionData(
+    "queryDecrypt",
+    [ctHash, utype, permission],
+  );
+
+  const queryDecryptResult = await provider.call({
+    to: MockQueryDecrypterAddress,
+    data: queryDecryptCallData,
+  });
+
+  const [decryptResult] = await queryDecrypterIface.decodeFunctionResult(
+    "queryDecrypt",
+    queryDecryptResult,
   );
 
   const {
