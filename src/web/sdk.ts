@@ -35,7 +35,7 @@ import {
   getViemAbstractProviders,
   EthersInitializerParams,
   getEthersAbstractProviders,
-} from "../core/permit/initializers";
+} from "../core/sdk/initializers";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
