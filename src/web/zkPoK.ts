@@ -12,7 +12,7 @@ import {
   MAX_UINT64,
   MAX_UINT128,
   MAX_UINT256,
-} from "../core/sdk/consts";
+} from "../core/utils/consts";
 import {
   toBigIntOrThrow,
   validateBigIntInRange,
@@ -146,7 +146,8 @@ export const zkVerify = async (
 
   // Send request to verification server
   try {
-    const response = await fetch(`${verifierUrl}/verify`, { //:3001
+    const response = await fetch(`${verifierUrl}/verify`, {
+      //:3001
       method: "POST",
       headers: {
         "Content-Type": "application/json",

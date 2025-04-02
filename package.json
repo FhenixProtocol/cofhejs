@@ -42,7 +42,8 @@
     "prettier": "prettier --write \"**/*.{js,json,md,sol,ts,yml}\"",
     "prettier-ci": "prettier --check \"**/*.{js,json,md,sol,ts,yml}\"",
     "test-docker-compose-down": "CONFIG_DIR=./docker/configs KEYS_PATH=./docker/keys docker compose -f test/docker-compose.yml down -v",
-    "test-docker-compose-up": "CONFIG_DIR=./docker/configs KEYS_PATH=./docker/keys docker compose -f test/docker-compose.yml up -d"
+    "test-docker-compose-up": "CONFIG_DIR=./docker/configs KEYS_PATH=./docker/keys docker compose -f test/docker-compose.yml up -d",
+    "test-docker-compose-pull": "docker compose -f test/docker-compose.yml pull"
   },
   "repository": {
     "type": "git",

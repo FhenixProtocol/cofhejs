@@ -2,7 +2,7 @@
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
 import { fromHexString } from "../utils/utils";
-import { PUBLIC_KEY_LENGTH_MIN } from "./consts";
+import { PUBLIC_KEY_LENGTH_MIN } from "../utils/consts";
 import {
   AbstractProvider,
   AbstractSigner,
@@ -66,7 +66,6 @@ export type SdkStore = SdkStoreProviderInitialization &
     coFheUrl: string | undefined;
     verifierUrl: string | undefined;
     thresholdNetworkUrl: string | undefined;
-    rpcUrl: string | undefined;
   };
 
 export const _sdkStore = createStore<SdkStore>(
@@ -79,7 +78,6 @@ export const _sdkStore = createStore<SdkStore>(
       coFheUrl: undefined,
       verifierUrl: undefined,
       thresholdNetworkUrl: undefined,
-      rpcUrl: undefined,
       providerInitialized: false,
       provider: undefined as never,
       chainId: undefined as never,
@@ -138,7 +136,6 @@ export const _store_initialize = async (params: InitializationParams) => {
     compactPkeCrsSerializer,
     coFheUrl,
     verifierUrl,
-    rpcUrl,
     thresholdNetworkUrl,
   } = params;
 
@@ -147,7 +144,6 @@ export const _store_initialize = async (params: InitializationParams) => {
     signerInitialized: false,
     coFheUrl,
     verifierUrl,
-    rpcUrl,
     thresholdNetworkUrl,
   });
 

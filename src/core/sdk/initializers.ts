@@ -50,10 +50,13 @@ export async function getViemAbstractProviders(
           ...transaction,
         });
       },
+      send: async (method: string, params: any[]) => {
+        return await viemClient.send(method, params);
+      },
     };
 
     // Create signer adapter if wallet client is provided
-    const signer = viemWalletClient
+    const signer: AbstractSigner | undefined = viemWalletClient
       ? {
           getAddress: async (): Promise<string> => {
             return viemWalletClient
@@ -72,10 +75,13 @@ export async function getViemAbstractProviders(
               message: value,
             });
           },
-          signMessage: async (message: string) => {
-            return viemWalletClient.signMessage({ message });
-          },
           provider: provider,
+          sendTransaction: async (tx: {
+            to: string;
+            data: string;
+          }): Promise<string> => {
+            return await viemWalletClient.sendTransaction(tx);
+          },
           // Add other signer methods as needed
         }
       : undefined;
@@ -123,9 +129,10 @@ export async function getEthersAbstractProviders(
         return (await ethersProvider.getNetwork()).chainId.toString();
       },
       call: ethersProvider.call,
+      send: ethersProvider.send,
     };
 
-    const signer = ethersSigner
+    const signer: AbstractSigner | undefined = ethersSigner
       ? {
           getAddress: async () => {
             return await ethersSigner.getAddress();
@@ -147,6 +154,12 @@ export async function getEthersAbstractProviders(
             }
           },
           provider: provider,
+          sendTransaction: async (tx: {
+            to: string;
+            data: string;
+          }): Promise<string> => {
+            return await ethersSigner.sendTransaction(tx);
+          },
         }
       : undefined;
 

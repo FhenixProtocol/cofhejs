@@ -1,6 +1,8 @@
 export interface AbstractProvider {
   getChainId(): Promise<string>;
   call(tx: { to: string; data: string }): Promise<string>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  send(method: string, params: any[]): Promise<any>;
 }
 
 export interface AbstractSigner {
@@ -11,6 +13,7 @@ export interface AbstractSigner {
     value: object,
   ): Promise<string>;
   provider: AbstractProvider;
+  sendTransaction(tx: { to: string; data: string }): Promise<string>;
 }
 
 export type Environment = "MOCK" | "LOCAL" | "TESTNET" | "MAINNET";
@@ -22,7 +25,6 @@ export type InitializationParams = {
   coFheUrl?: string;
   verifierUrl?: string;
   thresholdNetworkUrl?: string;
-  rpcUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;
 };

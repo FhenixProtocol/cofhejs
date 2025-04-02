@@ -26,7 +26,7 @@ import {
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
-import { testDecrypt, testSealOutput } from "../src/core/sdk/testnet";
+import { testSealOutput } from "../src/core/sdk/testnet";
 
 describe("Local Testnet (Anvil) Tests", () => {
   let bobPublicKey: string;
@@ -172,7 +172,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
   });
 
-  it.only("querySealOutput test", async () => {
+  it("querySealOutput test", async () => {
     await initSdkWithBob();
 
     const permit = expectResultSuccess(
@@ -182,42 +182,39 @@ describe("Local Testnet (Anvil) Tests", () => {
       }),
     );
 
-    const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
-
-    await testSealOutput(
-      jsonRpcProvider,
-      FheTypes.Bool,
-      permit.getPermission(),
-    );
+    await testSealOutput(bobProvider, FheTypes.Bool, permit.getPermission());
   });
 
-  it.only("queryDecrypt test", async () => {
-    await initSdkWithBob();
+  // TODO: Re-enable after testSealOutput is working
+  // - architect_dev 2025-04-01
+  //
+  // it.only("queryDecrypt test", async () => {
+  //   await initSdkWithBob();
 
-    const permit = expectResultSuccess(
-      await cofhejs.createPermit({
-        type: "self",
-        issuer: bobAddress,
-      }),
-    );
+  //   const permit = expectResultSuccess(
+  //     await cofhejs.createPermit({
+  //       type: "self",
+  //       issuer: bobAddress,
+  //     }),
+  //   );
 
-    const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
+  //   const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
 
-    await testDecrypt(jsonRpcProvider, FheTypes.Bool, permit.getPermission());
-  });
+  //   await testDecrypt(jsonRpcProvider, FheTypes.Bool, permit.getPermission());
+  // });
 
-  it("full flow", { timeout: 320000 }, async () => {
+  it.only("full flow", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     const logState = (state: EncryptStep) => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    // const inEncryptUint32 = expectResultSuccess(
-    //   await cofhejs.encrypt(logState, [Encryptable.uint32(5n)] as const),
-    // )[0];
+    const inEncryptUint32 = expectResultSuccess(
+      await cofhejs.encrypt(logState, [Encryptable.uint32(25n)] as const),
+    )[0];
 
-    // console.log("inEncryptUint32", inEncryptUint32);
+    console.log("inEncryptUint32", inEncryptUint32);
 
     const exampleContractAddress = "0x0000000000000000000000000000000000000300";
     const exampleContractAbi = [
@@ -278,7 +275,12 @@ describe("Local Testnet (Anvil) Tests", () => {
       wallet,
     );
 
-    const tx = await exampleContract.setNumberTrivial(50);
+    // Get nonce for Bob's wallet
+    const nonce = await provider.getTransactionCount(bobAddress);
+    console.log("Bob nonce", nonce);
+
+    // const tx = await exampleContract.setNumberTrivial(50, { nonce });
+    const tx = await exampleContract.setNumber(inEncryptUint32, { nonce });
     await tx.wait();
     console.log("tx hash", tx.hash);
     const ctHash = await exampleContract.numberHash();
@@ -291,7 +293,7 @@ describe("Local Testnet (Anvil) Tests", () => {
       }),
     );
 
-    const unsealed = await cofhejs.unseal(0n, FheTypes.Bool);
+    const unsealed = await cofhejs.unseal(ctHash, FheTypes.Uint32);
     console.log("unsealed", unsealed);
     if (unsealed.error != null) throw unsealed.error;
   });

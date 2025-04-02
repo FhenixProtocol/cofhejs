@@ -18,7 +18,7 @@ volumes:
 # Define a template for party member services
 x-party-member-template: &party-member-template
   build: .
-  image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
+  image: ghcr.io/fhenixprotocol/threshold-network
   network_mode: "host"
   restart: unless-stopped
   command: partymember-service
@@ -33,12 +33,12 @@ x-party-member-template: &party-member-template
 
 services:
   preprocessor:
-    image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
+    image: ghcr.io/fhenixprotocol/threshold-network
     container_name: preprocessor
     command: >
       sh -c "
-        preprocessor --runtime-config test &&
         mkdir -p /app/docker/test_data/0 &&
+        preprocessor --runtime-config test &&
         cp /app/docker/test_data/ck.binfile /app/docker/test_data/0/decryption_key &&
         cp /app/docker/test_data/public_key /app/docker/test_data/0/ &&
         cp /app/docker/test_data/computation_key /app/docker/test_data/0 &&
@@ -105,7 +105,7 @@ services:
 
   coordinator:
     build: .
-    image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
+    image: ghcr.io/fhenixprotocol/threshold-network
     container_name: coordinator
     network_mode: "host"
     ports:
@@ -120,7 +120,7 @@ services:
 
   dispatcher:
     build: .
-    image: ghcr.io/fhenixprotocol/threshold-network:v0.0.4_rc_2
+    image: ghcr.io/fhenixprotocol/threshold-network
     container_name: dispatcher
     network_mode: "host"
     ports:
@@ -157,6 +157,12 @@ services:
     container_name: party-member-3
     environment:
       - CONFIG_PATH=/app/configs/pm_config_03.toml
+
+  party-member-4:
+    <<: *party-member-template
+    container_name: party-member-4
+    environment:
+      - CONFIG_PATH=/app/configs/pm_config_04.toml
 
   zk-verifier:
     image: ghcr.io/fhenixprotocol/zk-verifier
