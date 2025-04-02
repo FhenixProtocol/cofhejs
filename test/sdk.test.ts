@@ -385,7 +385,7 @@ describe("Sdk Tests", () => {
     expect(bnToAddress(addressCleartext)).toEqual(addressValue);
   });
 
-  it.only("unseal via cofhe", async () => {
+  it("unseal via cofhe", async () => {
     await initSdkWithBob();
 
     expectResultSuccess(
@@ -405,7 +405,7 @@ describe("Sdk Tests", () => {
     console.log("result", result);
   });
 
-  it.only("decrypt via cofhe", async () => {
+  it("decrypt via cofhe", async () => {
     await initSdkWithBob();
 
     expectResultSuccess(
@@ -425,7 +425,7 @@ describe("Sdk Tests", () => {
     console.log("result", result);
   });
 
-  it.only("unseal (hardcoded permit)", async () => {
+  it("unseal (hardcoded permit)", async () => {
     await initSdkWithBob();
 
     const ctHash =
