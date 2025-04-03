@@ -537,9 +537,6 @@ export async function decrypt<U extends FheTypes>(
     });
   }
 
-  console.log("decrypt :: resolvedAccount", resolvedAccount);
-  console.log("decrypt :: resolvedHash", resolvedHash);
-
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
     throw new CofhejsError({
