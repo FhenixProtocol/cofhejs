@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ethers } from "ethers";
-import { AbstractProvider, AbstractSigner, Result } from "../src/types";
+import {
+  AbstractProvider,
+  AbstractSigner,
+  Result,
+  CofhejsError,
+  CofhejsErrorCode,
+} from "../src/types";
 import { expect } from "vitest";
-
-// Initialize genesis accounts
-const mnemonics = [
-  "grant rice replace explain federal release fix clever romance raise often wild taxi quarter soccer fiber love must tape steak together observe swap guitar", // account a
-  "jelly shadow frog dirt dragon use armed praise universe win jungle close inmate rain oil canvas beauty pioneer chef soccer icon dizzy thunder meadow", // account b
-  "chair love bleak wonder skirt permit say assist aunt credit roast size obtain minute throw sand usual age smart exact enough room shadow charge", // account c
-];
 
 // Anvil account 3 - address 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 export const BobWallet = new ethers.Wallet(
@@ -125,15 +124,45 @@ export class MockProvider implements AbstractProvider {
 }
 
 export const expectResultSuccess = <T>(result: Result<T>): T => {
-  expect(result.error).toEqual(null);
-  expect(result.data).not.toEqual(null);
+  expect(result.error).toBe(null);
+  expect(result.success).toBe(true);
+  expect(result.data).not.toBe(null);
   return result.data as T;
 };
 
 export const expectResultError = <T>(
   result: Result<T>,
-  error: string,
+  errorCode?: CofhejsErrorCode,
+  errorMessage?: string,
 ): void => {
-  expect(result.error).toEqual(error);
-  expect(result.data).toEqual(null);
+  expect(result.success).toBe(false);
+  expect(result.data).toBe(null);
+  expect(result.error).not.toBe(null);
+  const error = result.error as CofhejsError;
+  expect(error).toBeInstanceOf(CofhejsError);
+  if (errorCode) {
+    expect(error.code).toBe(errorCode);
+  }
+  if (errorMessage) {
+    expect(error.message).toBe(errorMessage);
+  }
+};
+
+export const expectResultErrorCode = <T>(
+  result: Result<T>,
+  errorCode: CofhejsErrorCode,
+): void => {
+  expectResultError(result, errorCode);
+};
+
+export const expectResultErrorMessage = <T>(
+  result: Result<T>,
+  errorMessage: string,
+): void => {
+  expect(result.success).toBe(false);
+  expect(result.data).toBe(null);
+  expect(result.error).not.toBe(null);
+  const error = result.error as CofhejsError;
+  expect(error).toBeInstanceOf(CofhejsError);
+  expect(error.message).toBe(errorMessage);
 };

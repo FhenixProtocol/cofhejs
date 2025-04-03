@@ -21,11 +21,10 @@ import {
   toHexString,
 } from "../core/utils/utils";
 import {
+  CofhejsError,
+  CofhejsErrorCode,
   EncryptableItem,
   FheTypes,
-  Result,
-  ResultErr,
-  ResultOk,
   VerifyResult,
   VerifyResultRaw,
 } from "../types";
@@ -125,7 +124,7 @@ export const zkVerify = async (
   address: string,
   securityZone: number,
   chainId: string,
-): Promise<Result<VerifyResult[]>> => {
+): Promise<VerifyResult[]> => {
   // send this to verifier
   const list_bytes = compactList.serialize();
 
@@ -157,32 +156,33 @@ export const zkVerify = async (
     if (!response.ok) {
       // Get the response body as text for better error details
       const errorBody = await response.text();
-      console.log("Response status:", response.status);
-      console.log("Response headers:", Object.fromEntries(response.headers));
-      console.log("Response body:", errorBody);
-      return ResultErr(
-        `HTTP error! status: ${response.status}, body: ${errorBody}`,
-      );
+      throw new CofhejsError({
+        code: CofhejsErrorCode.ZkVerifyFailed,
+        message: `HTTP error! ZK proof verification failed - ${errorBody}`,
+      });
     }
 
     const json: { status: string; data: VerifyResultRaw[]; error: string } =
       await response.json();
 
-    if (json.status === "success") {
-      return ResultOk(
-        json.data.map(({ ct_hash, signature, recid }) => {
-          return {
-            ct_hash,
-            signature: concatSigRecid(signature, recid),
-          };
-        }),
-      );
-    } else {
-      return ResultErr(json.error);
+    if (json.status !== "success") {
+      throw new CofhejsError({
+        code: CofhejsErrorCode.ZkVerifyFailed,
+        message: `ZK proof verification response malformed - ${json.error}`,
+      });
     }
+
+    return json.data.map(({ ct_hash, signature, recid }) => {
+      return {
+        ct_hash,
+        signature: concatSigRecid(signature, recid),
+      };
+    });
   } catch (e) {
-    const message = e instanceof Error ? e.message : `Error: ${e}`;
-    console.error(message);
-    return ResultErr(message);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ZkVerifyFailed,
+      message: `ZK proof verification failed`,
+      cause: e instanceof Error ? e : undefined,
+    });
   }
 };

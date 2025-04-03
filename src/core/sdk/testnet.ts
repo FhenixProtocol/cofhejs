@@ -6,14 +6,13 @@ import {
   AbstractProvider,
   AbstractSigner,
   CoFheInItem,
+  CofhejsError,
+  CofhejsErrorCode,
   EncryptableItem,
   Encrypted_Inputs,
   EncryptStep,
   FheTypes,
   Permission,
-  Result,
-  ResultErr,
-  ResultOk,
   UnsealedItem,
   VerifyResult,
 } from "../../types";
@@ -23,153 +22,12 @@ import { Permit } from "../permit";
 import { convertViaUtype, isValidUtype } from "../utils/utype";
 import {
   fnExistsIface,
+  mockQueryDecrypterAbi,
   MockQueryDecrypterAddress,
   MockZkVerifierAddress,
   mockZkVerifierIface,
   MockZkVerifierSignerPkey,
 } from "../utils/consts";
-
-const mockExampleAbi = [
-  {
-    type: "function",
-    name: "numberHash",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "view",
-  },
-];
-const mockExampleAddress = "0x0000000000000000000000000000000000000300";
-const mockQueryDecrypterAbi = [
-  {
-    type: "function",
-    name: "acl",
-    inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "contract ACL" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "decodeLowLevelReversion",
-    inputs: [{ name: "data", type: "bytes", internalType: "bytes" }],
-    outputs: [{ name: "error", type: "string", internalType: "string" }],
-    stateMutability: "pure",
-  },
-  {
-    type: "function",
-    name: "exists",
-    inputs: [],
-    outputs: [{ name: "", type: "bool", internalType: "bool" }],
-    stateMutability: "pure",
-  },
-  {
-    type: "function",
-    name: "initialize",
-    inputs: [
-      { name: "_taskManager", type: "address", internalType: "address" },
-      { name: "_acl", type: "address", internalType: "address" },
-    ],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "queryDecrypt",
-    inputs: [
-      { name: "ctHash", type: "uint256", internalType: "uint256" },
-      { name: "", type: "uint256", internalType: "uint256" },
-      {
-        name: "permission",
-        type: "tuple",
-        internalType: "struct Permission",
-        components: [
-          { name: "issuer", type: "address", internalType: "address" },
-          { name: "expiration", type: "uint64", internalType: "uint64" },
-          { name: "recipient", type: "address", internalType: "address" },
-          { name: "validatorId", type: "uint256", internalType: "uint256" },
-          {
-            name: "validatorContract",
-            type: "address",
-            internalType: "address",
-          },
-          { name: "sealingKey", type: "bytes32", internalType: "bytes32" },
-          { name: "issuerSignature", type: "bytes", internalType: "bytes" },
-          { name: "recipientSignature", type: "bytes", internalType: "bytes" },
-        ],
-      },
-    ],
-    outputs: [
-      { name: "allowed", type: "bool", internalType: "bool" },
-      { name: "error", type: "string", internalType: "string" },
-      { name: "", type: "uint256", internalType: "uint256" },
-    ],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "querySealOutput",
-    inputs: [
-      { name: "ctHash", type: "uint256", internalType: "uint256" },
-      { name: "", type: "uint256", internalType: "uint256" },
-      {
-        name: "permission",
-        type: "tuple",
-        internalType: "struct Permission",
-        components: [
-          { name: "issuer", type: "address", internalType: "address" },
-          { name: "expiration", type: "uint64", internalType: "uint64" },
-          { name: "recipient", type: "address", internalType: "address" },
-          { name: "validatorId", type: "uint256", internalType: "uint256" },
-          {
-            name: "validatorContract",
-            type: "address",
-            internalType: "address",
-          },
-          { name: "sealingKey", type: "bytes32", internalType: "bytes32" },
-          { name: "issuerSignature", type: "bytes", internalType: "bytes" },
-          { name: "recipientSignature", type: "bytes", internalType: "bytes" },
-        ],
-      },
-    ],
-    outputs: [
-      { name: "allowed", type: "bool", internalType: "bool" },
-      { name: "error", type: "string", internalType: "string" },
-      { name: "", type: "bytes32", internalType: "bytes32" },
-    ],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "seal",
-    inputs: [
-      { name: "input", type: "uint256", internalType: "uint256" },
-      { name: "key", type: "bytes32", internalType: "bytes32" },
-    ],
-    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
-    stateMutability: "pure",
-  },
-  {
-    type: "function",
-    name: "taskManager",
-    inputs: [],
-    outputs: [
-      { name: "", type: "address", internalType: "contract TaskManager" },
-    ],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "unseal",
-    inputs: [
-      { name: "hashed", type: "bytes32", internalType: "bytes32" },
-      { name: "key", type: "bytes32", internalType: "bytes32" },
-    ],
-    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
-    stateMutability: "pure",
-  },
-  { type: "error", name: "NotAllowed", inputs: [] },
-  { type: "error", name: "SealingKeyInvalid", inputs: [] },
-  { type: "error", name: "SealingKeyMissing", inputs: [] },
-] as const;
 
 export async function checkIsTestnet(
   provider: AbstractProvider,
@@ -210,7 +68,7 @@ async function mockZkVerifySign(
   user: string,
   items: EncryptableItem[],
   securityZone: number,
-): Promise<Result<VerifyResult[]>> {
+): Promise<VerifyResult[]> {
   // Create ethers wallet with mockZkVerifierSignerPkey
   const zkVerifierSigner = new ethers.Wallet(MockZkVerifierSignerPkey);
 
@@ -227,8 +85,8 @@ async function mockZkVerifySign(
   const zkVerifyCalcCtHashesPackedCallData = zkVerifierIface.encodeFunctionData(
     "zkVerifyCalcCtHashesPacked",
     [
-      items.map((item) => BigInt(item.data)),
-      items.map((item) => item.utype),
+      items.map(({ data }) => BigInt(data)),
+      items.map(({ utype }) => utype),
       user,
       securityZone,
       BigInt(chainId),
@@ -250,14 +108,11 @@ async function mockZkVerifySign(
     "zkVerifyCalcCtHashesPacked",
     zkVerifyCalcCtHashesPackedResult,
   );
-  console.log("ctHashes", ctHashes);
 
   const itemsWithCtHashes = items.map((item, index) => ({
     ...item,
     ctHash: ctHashes[index],
   }));
-
-  console.log("itemsWithCtHashes", itemsWithCtHashes);
 
   try {
     // Construct insertPackedCtHashes call data
@@ -265,31 +120,21 @@ async function mockZkVerifySign(
       "insertPackedCtHashes",
       [
         itemsWithCtHashes.map(({ ctHash }) => ctHash.toString()),
-        itemsWithCtHashes.map(({ data }) => data),
+        itemsWithCtHashes.map(({ data }) => BigInt(data)),
       ],
     );
 
     // Call insertPackedCtHashes
-    const signerAddress = await signer.getAddress();
-    const txCount = await provider.send("eth_getTransactionCount", [
-      signerAddress,
-      "latest",
-    ]);
-    console.log(`Transaction count for ${signerAddress}: ${txCount}`);
-
-    const insertPackedCtHashesResult = await signer.sendTransaction({
+    await signer.sendTransaction({
       to: MockZkVerifierAddress,
       data: insertPackedCtHashesCallData,
     });
-
-    const receipt = await provider.send("eth_getTransactionReceipt", [
-      insertPackedCtHashesResult,
-    ]);
-
-    console.log({ insertPackedCtHashesResult, receipt });
   } catch (err) {
-    console.log("mockZkVerifySign :: insertPackedCtHashes :: err:", err);
-    return ResultErr(`mockZkVerifySign :: insertPackedCtHashes :: err: ${err}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ZkVerifyInsertPackedCtHashesFailed,
+      message: `mockZkVerifySign insertPackedCtHashes failed: ${err}`,
+      cause: err instanceof Error ? err : undefined,
+    });
   }
 
   // Sign the items
@@ -316,11 +161,13 @@ async function mockZkVerifySign(
       });
     }
 
-    console.log("results", results);
-    return ResultOk(results);
+    return results;
   } catch (err) {
-    console.log("mockZkVerifySign :: err:", err);
-    return ResultErr(`mockZkVerifySign :: err: ${err}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ZkVerifySignFailed,
+      message: `mockZkVerifySign sign failed: ${err}`,
+      cause: err instanceof Error ? err : undefined,
+    });
   }
 }
 
@@ -328,21 +175,34 @@ export async function mockEncrypt<T extends any[]>(
   setState: (state: EncryptStep) => void,
   item: [...T],
   securityZone = 0,
-): Promise<Result<[...Encrypted_Inputs<T>]>> {
+): Promise<[...Encrypted_Inputs<T>]> {
   setState(EncryptStep.Extract);
 
   const state = _sdkStore.getState();
 
   if (state.account == null)
-    return ResultErr("encrypt :: account uninitialized");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.AccountUninitialized,
+      message: "Account uninitialized",
+    });
 
   if (state.chainId == null)
-    return ResultErr("encrypt :: chainId uninitialized");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ChainIdUninitialized,
+      message: "ChainId uninitialized",
+    });
 
   if (state.provider == null)
-    return ResultErr("encrypt :: provider uninitialized");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ProviderNotInitialized,
+      message: "Provider uninitialized",
+    });
 
-  if (state.signer == null) return ResultErr("encrypt :: signer uninitialized");
+  if (state.signer == null)
+    throw new CofhejsError({
+      code: CofhejsErrorCode.SignerNotInitialized,
+      message: "Signer uninitialized",
+    });
 
   const encryptableItems = encryptExtract(item);
 
@@ -366,12 +226,8 @@ export async function mockEncrypt<T extends any[]>(
     encryptableItems,
     securityZone,
   );
-  if (!signedResults.success)
-    return ResultErr(
-      `encrypt :: ZK proof verification failed - ${signedResults.error}`,
-    );
 
-  const inItems: CoFheInItem[] = signedResults.data.map(
+  const inItems: CoFheInItem[] = signedResults.map(
     ({ ct_hash, signature }, index) => ({
       ctHash: BigInt(ct_hash),
       securityZone,
@@ -385,121 +241,31 @@ export async function mockEncrypt<T extends any[]>(
   const [preparedInputItems, remainingInItems] = encryptReplace(item, inItems);
 
   if (remainingInItems.length !== 0)
-    return ResultErr(
-      "encrypt :: some encrypted inputs remaining after replacement",
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.EncryptRemainingInItems,
+      message: "Some encrypted inputs remaining after replacement",
+    });
 
   setState(EncryptStep.Done);
 
-  return ResultOk(preparedInputItems);
+  return preparedInputItems;
 }
-
-export async function testSealOutput(
-  provider: AbstractProvider,
-  utype: FheTypes,
-  permission: Permission,
-) {
-  const mockExampleIFace = new ethers.Interface(mockExampleAbi);
-
-  const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
-  const hashResult = await provider.call({
-    to: mockExampleAddress,
-    data: hashCallData,
-  });
-  const [ctHash] = mockExampleIFace.decodeFunctionResult(
-    "numberHash",
-    hashResult,
-  );
-
-  console.log({
-    hashResult,
-    ctHash,
-  });
-
-  const queryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
-  const querySealOutputCallData = queryDecrypterIface.encodeFunctionData(
-    "querySealOutput",
-    [ctHash, utype, permission],
-  );
-
-  const querySealOutputResult = await provider.call({
-    to: MockQueryDecrypterAddress,
-    data: querySealOutputCallData,
-  });
-
-  const [sealedResult] = await queryDecrypterIface.decodeFunctionResult(
-    "querySealOutput",
-    querySealOutputResult,
-  );
-
-  const {
-    allowed,
-    error,
-    result,
-  }: { allowed: boolean; error: string; result: string } = sealedResult;
-
-  console.log("sealedResult", allowed, error, result);
-
-  const sealedBigInt = BigInt(result);
-  const sealingKeyBigInt = BigInt(permission.sealingKey);
-  const unsealed = sealedBigInt ^ sealingKeyBigInt;
-
-  console.log("mock unsealed", unsealed);
-}
-
-// TODO: Re-enable after testSealOutput is working
-// - architect_dev 2025-04-01
-//
-// export async function testDecrypt(
-//   provider: JsonRpcProvider,
-//   utype: FheTypes,
-//   permission: Permission,
-// ) {
-//   const mockExampleIFace = new ethers.Interface(mockExampleAbi);
-
-//   const hashCallData = mockExampleIFace.encodeFunctionData("numberHash");
-//   const hashResult = await provider.call({
-//     to: mockExampleAddress,
-//     data: hashCallData,
-//   });
-
-//   const mockDecrypter = new ethers.Contract(
-//     mockQueryDecrypterAddress,
-//     mockQueryDecrypterAbi,
-//     provider,
-//   );
-
-//   const decryptResult = await mockDecrypter.queryDecrypt(
-//     hashResult,
-//     utype,
-//     permission,
-//   );
-
-//   console.log("query decrypt result", decryptResult);
-// }
 
 export async function mockSealOutput<U extends FheTypes>(
   provider: AbstractProvider,
   ctHash: bigint,
   utype: U,
   permit: Permit,
-): Promise<Result<UnsealedItem<U>>> {
+): Promise<UnsealedItem<U>> {
   const domainValid = await permit.checkSignedDomainValid(provider);
   if (!domainValid) {
-    return ResultErr("mockSealOutput :: permit domain invalid");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidPermitDomain,
+      message: "permit domain invalid",
+    });
   }
 
-  console.log("mockSealOutput :: ctHash", ctHash);
-
-  // const queryDecrypter = new ethers.Contract(
-  //   mockQueryDecrypterAddress,
-  //   mockQueryDecrypterAbi,
-  //   provider,
-  // );
-
   const permission = permit.getPermission();
-
-  console.log("permission", permission);
 
   const queryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
   const querySealOutputCallData = queryDecrypterIface.encodeFunctionData(
@@ -511,8 +277,6 @@ export async function mockSealOutput<U extends FheTypes>(
     to: MockQueryDecrypterAddress,
     data: querySealOutputCallData,
   });
-
-  console.log("querySealOutputResult", querySealOutputResult);
 
   const [allowed, error, result] =
     await queryDecrypterIface.decodeFunctionResult(
@@ -520,25 +284,32 @@ export async function mockSealOutput<U extends FheTypes>(
       querySealOutputResult,
     );
 
-  console.log("sealedResult", allowed, error, result);
-
   if (error != "") {
-    return ResultErr(
-      `mockSealOutput :: querySealOutput onchain error - ${error}`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.SealOutputFailed,
+      message: `On-chain reversion: ${error}`,
+    });
+  }
+
+  if (allowed == false) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.SealOutputFailed,
+      message: `ACL Access Denied (NotAllowed)`,
+    });
   }
 
   const sealedBigInt = BigInt(result);
   const sealingKeyBigInt = BigInt(permission.sealingKey);
   const unsealed = sealedBigInt ^ sealingKeyBigInt;
 
-  console.log("mock unsealed", unsealed);
-
   if (!isValidUtype(utype)) {
-    return ResultErr(`mockSealOutput :: invalid utype :: ${utype}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidUtype,
+      message: `Invalid utype: ${utype}`,
+    });
   }
 
-  return ResultOk(convertViaUtype(utype, unsealed)) as Result<UnsealedItem<U>>;
+  return convertViaUtype(utype, unsealed);
 }
 
 export async function mockDecrypt<U extends FheTypes>(
@@ -546,17 +317,14 @@ export async function mockDecrypt<U extends FheTypes>(
   ctHash: bigint,
   utype: U,
   permit: Permit,
-): Promise<Result<UnsealedItem<U>>> {
+): Promise<UnsealedItem<U>> {
   const domainValid = await permit.checkSignedDomainValid(provider);
   if (!domainValid) {
-    return ResultErr("mockDecrypt :: permit domain invalid");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidPermitDomain,
+      message: "permit domain invalid",
+    });
   }
-
-  // const queryDecrypter = new ethers.Contract(
-  //   mockQueryDecrypterAddress,
-  //   mockQueryDecrypterAbi,
-  //   provider,
-  // );
 
   const permission = permit.getPermission();
 
@@ -582,19 +350,28 @@ export async function mockDecrypt<U extends FheTypes>(
     result,
   }: { allowed: boolean; error: string; result: string } = decryptResult;
 
-  console.log("decryptResult", allowed, error, result);
-
   if (error != null) {
-    return ResultErr(`mockDecrypt :: queryDecrypt onchain error - ${error}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.DecryptFailed,
+      message: `On-chain reversion: ${error}`,
+    });
+  }
+
+  if (allowed == false) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.DecryptFailed,
+      message: `ACL Access Denied (NotAllowed)`,
+    });
   }
 
   const resultBigInt = BigInt(result);
 
   if (!isValidUtype(utype)) {
-    return ResultErr(`mockDecrypt :: invalid utype :: ${utype}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidUtype,
+      message: `Invalid utype: ${utype}`,
+    });
   }
 
-  return ResultOk(convertViaUtype(utype, resultBigInt)) as Result<
-    UnsealedItem<U>
-  >;
+  return convertViaUtype(utype, resultBigInt);
 }

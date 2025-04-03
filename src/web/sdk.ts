@@ -18,12 +18,15 @@ import { Permit } from "../core/permit";
 import { _sdkStore } from "../core/sdk/store";
 import {
   CoFheInItem,
+  CofhejsError,
+  CofhejsErrorCode,
   Encrypted_Inputs,
   EncryptStep,
   InitializationParams,
+  Permission,
   Result,
-  ResultErr,
-  ResultOk,
+  wrapFunction,
+  wrapFunctionAsync,
 } from "../types";
 import { initTfhe } from "./init";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
@@ -51,22 +54,20 @@ export const initialize = async (
     generatePermit?: boolean;
     environment?: Environment;
   },
-): Promise<Result<Permit | undefined>> => {
+): Promise<Permit | undefined> => {
   // Apply environment-specific defaults if environment is provided
-  const processedParamsResult = applyEnvironmentDefaults(params);
-  if (!processedParamsResult.success) {
-    return ResultErr(processedParamsResult.error);
-  }
-  const processedParams = processedParamsResult.data;
+  const processedParams = applyEnvironmentDefaults(params);
 
   // Initialize the fhevm
   await initTfhe().catch((err: unknown) => {
     if (processedParams.ignoreErrors) {
       return undefined;
     } else {
-      return ResultErr(
-        `initialize :: failed to initialize cofhejs - is the network FHE-enabled? ${err}`,
-      );
+      throw new CofhejsError({
+        code: CofhejsErrorCode.InitTfheFailed,
+        message: `initializing TFHE failed - is the network FHE-enabled?`,
+        cause: err instanceof Error ? err : undefined,
+      });
     }
   });
 
@@ -83,30 +84,24 @@ export const initialize = async (
 
 async function initializeWithViem(
   params: ViemInitializerParams,
-): Promise<Result<Permit | undefined>> {
-  const result = await getViemAbstractProviders(params);
-  if (!result.success) {
-    return ResultErr(result.error);
-  }
+): Promise<Permit | undefined> {
+  const { provider, signer } = await getViemAbstractProviders(params);
 
   return initialize({
-    provider: result.data.provider!,
-    signer: result.data.signer!,
+    provider,
+    signer,
     ...params,
   });
 }
 
 async function initializeWithEthers(
   params: EthersInitializerParams,
-): Promise<Result<Permit | undefined>> {
-  const result = await getEthersAbstractProviders(params);
-  if (!result.success) {
-    return ResultErr(result.error);
-  }
+): Promise<Permit | undefined> {
+  const { provider, signer } = await getEthersAbstractProviders(params);
 
   return initialize({
-    provider: result.data.provider!,
-    signer: result.data.signer!,
+    provider,
+    signer,
     ...params,
   });
 }
@@ -115,7 +110,7 @@ async function encrypt<T extends any[]>(
   setState: (state: EncryptStep) => void,
   item: [...T],
   securityZone = 0,
-): Promise<Result<[...Encrypted_Inputs<T>]>> {
+): Promise<[...Encrypted_Inputs<T>]> {
   const state = _sdkStore.getState();
   if (state.isTestnet) {
     return mockEncrypt(setState, item, securityZone);
@@ -125,8 +120,7 @@ async function encrypt<T extends any[]>(
 
   const keysResult = encryptGetKeys();
 
-  if (!keysResult.success) return ResultErr(`encrypt :: ${keysResult.error}`);
-  const { fhePublicKey, crs, verifierUrl, account, chainId } = keysResult.data;
+  const { fhePublicKey, crs, verifierUrl, account, chainId } = keysResult;
 
   const encryptableItems = encryptExtract(item);
 
@@ -149,7 +143,7 @@ async function encrypt<T extends any[]>(
 
   setState(EncryptStep.Verify);
 
-  const zkVerifyRes = await zkVerify(
+  const verifyResults = await zkVerify(
     verifierUrl,
     proved,
     account,
@@ -157,12 +151,7 @@ async function encrypt<T extends any[]>(
     chainId,
   );
 
-  if (!zkVerifyRes.success)
-    return ResultErr(
-      `encrypt :: ZK proof verification failed - ${zkVerifyRes.error}`,
-    );
-
-  const inItems: CoFheInItem[] = zkVerifyRes.data.map(
+  const inItems: CoFheInItem[] = verifyResults.map(
     ({ ct_hash, signature }, index) => ({
       ctHash: BigInt(ct_hash),
       securityZone,
@@ -176,30 +165,33 @@ async function encrypt<T extends any[]>(
   const [preparedInputItems, remainingInItems] = encryptReplace(item, inItems);
 
   if (remainingInItems.length !== 0)
-    return ResultErr(
-      "encrypt :: some encrypted inputs remaining after replacement",
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.EncryptRemainingInItems,
+      message: "Some encrypted inputs remaining after replacement",
+    });
 
   setState(EncryptStep.Done);
 
-  return ResultOk(preparedInputItems);
+  return preparedInputItems;
 }
 
 export const cofhejs = {
   store: _sdkStore,
-  initialize,
-  initializeWithViem,
-  initializeWithEthers,
+  initialize: wrapFunctionAsync(initialize),
+  initializeWithViem: wrapFunctionAsync(initializeWithViem),
+  initializeWithEthers: wrapFunctionAsync(initializeWithEthers),
 
-  createPermit,
-  importPermit,
-  selectActivePermit,
-  getPermit,
-  getPermission,
-  getAllPermits,
+  createPermit: wrapFunctionAsync(createPermit),
+  importPermit: wrapFunctionAsync(importPermit),
+  selectActivePermit: wrapFunction(selectActivePermit),
+  getPermit: wrapFunction(getPermit),
+  getPermission: wrapFunction(getPermission) as (
+    hash?: string,
+  ) => Result<Permission>,
+  getAllPermits: wrapFunction(getAllPermits),
 
-  encrypt,
+  encrypt: wrapFunctionAsync(encrypt),
 
-  unseal,
-  decrypt,
+  unseal: wrapFunctionAsync(unseal),
+  decrypt: wrapFunctionAsync(decrypt),
 };
