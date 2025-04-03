@@ -189,8 +189,6 @@ export async function checkIsTestnet(
       data: existsCallData,
     });
 
-    console.log({ zkVerifierExistsRaw, queryDecrypterExistsRaw });
-
     const [zkVerifierExists] = existsIface.decodeFunctionResult(
       "exists",
       zkVerifierExistsRaw,
@@ -199,8 +197,6 @@ export async function checkIsTestnet(
       "exists",
       queryDecrypterExistsRaw,
     );
-
-    console.log({ zkVerifierExists, queryDecrypterExists });
 
     return zkVerifierExists && queryDecrypterExists;
   } catch (err) {
