@@ -100,10 +100,6 @@ async function mockZkVerifySign(
   });
 
   // Decode zkVerifyCalcCtHashesPacked result
-  console.log(
-    "zkVerifyCalcCtHashesPackedResult",
-    zkVerifyCalcCtHashesPackedResult,
-  );
   const [ctHashes] = zkVerifierIface.decodeFunctionResult(
     "zkVerifyCalcCtHashesPacked",
     zkVerifyCalcCtHashesPackedResult,
