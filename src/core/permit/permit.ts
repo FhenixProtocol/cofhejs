@@ -150,7 +150,6 @@ export class Permit implements PermitInterface, PermitMetadata {
 
   /**
    * Creates a `Permit` from a serialized permit, hydrating methods and classes
-   * NOTE: Does not return a stringified permit
    *
    * @param {SerializedPermit} - Permit structure excluding classes
    * @returns {Permit} - New instance of Permit class
@@ -220,8 +219,7 @@ export class Permit implements PermitInterface, PermitMetadata {
   };
 
   /**
-   * Returns a serializable permit instance, removing classes and methods.
-   * NOTE: Does not return a stringified permit
+   * Serializes the permit, removing classes and methods.
    */
   serialize = (): SerializedPermit => {
     const { sealingPair, ...permit } = this.getInterface();
@@ -236,9 +234,11 @@ export class Permit implements PermitInterface, PermitMetadata {
   };
 
   /**
-   * Extracts a contract input ready permission from this permit.
+   * Extracts a permission from this permit ready for use in the query decrypt/sealoutput flows.
    * The permission inherits most fields from the permit, however
    * `permit.sealingPair` is removed and replaced by `permit.sealingPair.publicKey` in the `sealingKey` field.
+   * `permit.type` is removed, the type is determined on-chain by which populated fields are present.
+   * `permit.name` is removed, the name is used only for organization and UI purposes.
    *
    * @permit {boolean} skipValidation - Flag to prevent running validation on the permit before returning the extracted permission. Used internally.
    * @returns {Permission}
