@@ -124,12 +124,17 @@ export async function getEthersAbstractProviders(
   try {
     const { ethersProvider, ethersSigner } = params;
 
-    const provider = {
+    const provider: AbstractProvider = {
       getChainId: async () => {
         return (await ethersProvider.getNetwork()).chainId.toString();
       },
-      call: ethersProvider.call,
-      send: ethersProvider.send,
+      call: async (transaction: any) => {
+        // Pass through to the original provider's call method
+        return await ethersProvider.call(transaction);
+      },
+      send: async (method: string, params: any[]) => {
+        return await ethersProvider.send(method, params);
+      },
     };
 
     const signer: AbstractSigner | undefined = ethersSigner

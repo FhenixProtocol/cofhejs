@@ -43,12 +43,12 @@ export function applyEnvironmentDefaults<
     case "TESTNET":
       result.coFheUrl =
         params.coFheUrl ||
-        "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com:8448";
+        "http://cofhe.fhenix.zone:8448";
       result.verifierUrl =
-        params.verifierUrl || "http://fullstack.tn-testnets.fhenix.zone:3001";
+        params.verifierUrl || "http://cofhe-vrf.fhenix.zone:3001";
       result.thresholdNetworkUrl =
         params.thresholdNetworkUrl ||
-        "http://fullstack.tn-testnets.fhenix.zone:3000";
+        "http://cofhe-tn.fhenix.zone:3000";
       break;
     case "MAINNET":
       result.coFheUrl =
