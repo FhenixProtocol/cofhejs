@@ -27,7 +27,10 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "prebuild": "npm run clean",
+    "build": "npm run prebuild && npm run build:web && npm run build:node",
+    "build:web": "tsup --config tsup.config.ts --entry.web=./src/web/index.ts --platform=browser",
+    "build:node": "tsup --config tsup.config.ts --entry.node=./src/node/index.ts --platform=node",
     "dev": "tsup --watch",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run clean && npm run build",
@@ -57,6 +60,7 @@
   "homepage": "https://github.com/FhenixProtocol/cofhejs#readme",
   "dependencies": {
     "@types/node": "^20.0.0",
+    "idb-keyval": "^6.2.1",
     "immer": "^10.1.1",
     "node-tfhe": "0.11.1",
     "tfhe": "0.11.1",

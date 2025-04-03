@@ -9,7 +9,8 @@ import {
   InitializationParams,
 } from "../../types";
 import { checkIsTestnet } from "./testnet";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { get, set, del } from 'idb-keyval'; // You'll need to install this package
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -49,7 +50,20 @@ export const _keysStore = createStore<KeysStore>()(
       fhe: {},
       crs: {},
     }),
-    { name: "cofhejs-keys" },
+    { 
+      name: "cofhejs-keys",
+      storage: createJSONStorage(() => ({
+        getItem: async (name) => {
+          return (await get(name)) || null;
+        },
+        setItem: async (name, value) => {
+          await set(name, value);
+        },
+        removeItem: async (name) => {
+          await del(name);
+        },
+      })),
+    },
   ),
 );
 
