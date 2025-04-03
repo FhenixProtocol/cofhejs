@@ -10,7 +10,76 @@ import {
 } from "../../types";
 import { checkIsTestnet } from "./testnet";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { get, set, del } from 'idb-keyval'; // You'll need to install this package
+
+// Determine if we're in a browser environment
+const isBrowser = typeof window !== 'undefined' && window.indexedDB;
+
+// Create appropriate storage
+const getStorage = () => {
+  if (isBrowser) {
+    // Browser storage using IndexedDB
+    const { get, set, del } = require('idb-keyval');
+    return {
+      getItem: async (name: string) => {
+        return (await get(name)) || null;
+      },
+      setItem: async (name: string, value: any) => {
+        await set(name, value);
+      },
+      removeItem: async (name: string) => {
+        await del(name);
+      },
+    };
+  } else {
+    // Node.js storage using filesystem
+    // Use dynamic imports to avoid bundling Node.js modules in browser builds
+    try {
+      // This code will only run in Node.js environments
+      const fs = require('fs');
+      const path = require('path');
+      const storageDir = path.join(process.env.HOME || process.env.USERPROFILE || '.', '.cofhejs');
+      
+      if (!fs.existsSync(storageDir)) {
+        fs.mkdirSync(storageDir, { recursive: true });
+      }
+      
+      return {
+        getItem: async (name: string) => {
+          const filePath = path.join(storageDir, `${name}.json`);
+          if (fs.existsSync(filePath)) {
+            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          }
+          return null;
+        },
+        setItem: async (name: string, value: any) => {
+          const filePath = path.join(storageDir, `${name}.json`);
+          fs.writeFileSync(filePath, JSON.stringify(value));
+        },
+        removeItem: async (name: string) => {
+          const filePath = path.join(storageDir, `${name}.json`);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        },
+      };
+    } catch (e) {
+      // Fallback for environments where fs/path are not available
+      console.warn('Node.js filesystem modules not available, using memory storage');
+      const memoryStorage: Record<string, string> = {};
+      return {
+        getItem: async (name: string) => {
+          return memoryStorage[name] || null;
+        },
+        setItem: async (name: string, value: any) => {
+          memoryStorage[name] = JSON.stringify(value);
+        },
+        removeItem: async (name: string) => {
+          delete memoryStorage[name];
+        },
+      };
+    }
+  }
+};
 
 type ChainRecord<T> = Record<string, T>;
 type SecurityZoneRecord<T> = Record<number, T>;
@@ -52,17 +121,7 @@ export const _keysStore = createStore<KeysStore>()(
     }),
     { 
       name: "cofhejs-keys",
-      storage: createJSONStorage(() => ({
-        getItem: async (name) => {
-          return (await get(name)) || null;
-        },
-        setItem: async (name, value) => {
-          await set(name, value);
-        },
-        removeItem: async (name) => {
-          await del(name);
-        },
-      })),
+      storage: createJSONStorage(() => getStorage()),
     },
   ),
 );
