@@ -115,6 +115,8 @@ export type EthersInitializerParams = Omit<
   generatePermit?: boolean;
   ethersProvider: any; // Ethers provider (e.g., Web3Provider connected to window.ethereum)
   ethersSigner?: any; // Ethers signer (usually provider.getSigner())
+  environment?: Environment;
+
 };
 
 /**

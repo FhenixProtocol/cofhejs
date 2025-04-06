@@ -314,10 +314,13 @@ export class Permit implements PermitInterface, PermitMetadata {
     const aclAddressResult = await provider.call({
       to: TaskManagerAddress,
       data: aclCallData,
-    });
+    }) as any;
+
+    const aclAddressResultData = typeof aclAddressResult === "string" ? aclAddressResult : aclAddressResult.data;
+
     const [aclAddress] = taskManagerInterface.decodeFunctionResult(
       "acl",
-      aclAddressResult,
+      aclAddressResultData,
     );
 
     const domainIface = new ethers.Interface(fnEip712DomainIface);
@@ -326,7 +329,9 @@ export class Permit implements PermitInterface, PermitMetadata {
     const domainResult = await provider.call({
       to: aclAddress,
       data: domainCalldata,
-    });
+    }) as any;
+
+    const domainResultData = typeof domainResult === "string" ? domainResult : domainResult.data;
 
     const [
       _fields,
@@ -336,7 +341,7 @@ export class Permit implements PermitInterface, PermitMetadata {
       verifyingContract,
       _salt,
       _extensions,
-    ] = domainIface.decodeFunctionResult("eip712Domain", domainResult);
+    ] = domainIface.decodeFunctionResult("eip712Domain", domainResultData);
 
     return {
       name,
