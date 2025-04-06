@@ -48,3 +48,135 @@ export const mockZkVerifierIface = [
   ) public view returns (uint256[] memory ctHashes)`,
   "function insertPackedCtHashes(uint256[] ctHashes, uint256[] values) public",
 ];
+
+export const mockQueryDecrypterAbi = [
+  {
+    type: "function",
+    name: "acl",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "contract ACL" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "decodeLowLevelReversion",
+    inputs: [{ name: "data", type: "bytes", internalType: "bytes" }],
+    outputs: [{ name: "error", type: "string", internalType: "string" }],
+    stateMutability: "pure",
+  },
+  {
+    type: "function",
+    name: "exists",
+    inputs: [],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "pure",
+  },
+  {
+    type: "function",
+    name: "initialize",
+    inputs: [
+      { name: "_taskManager", type: "address", internalType: "address" },
+      { name: "_acl", type: "address", internalType: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "queryDecrypt",
+    inputs: [
+      { name: "ctHash", type: "uint256", internalType: "uint256" },
+      { name: "", type: "uint256", internalType: "uint256" },
+      {
+        name: "permission",
+        type: "tuple",
+        internalType: "struct Permission",
+        components: [
+          { name: "issuer", type: "address", internalType: "address" },
+          { name: "expiration", type: "uint64", internalType: "uint64" },
+          { name: "recipient", type: "address", internalType: "address" },
+          { name: "validatorId", type: "uint256", internalType: "uint256" },
+          {
+            name: "validatorContract",
+            type: "address",
+            internalType: "address",
+          },
+          { name: "sealingKey", type: "bytes32", internalType: "bytes32" },
+          { name: "issuerSignature", type: "bytes", internalType: "bytes" },
+          { name: "recipientSignature", type: "bytes", internalType: "bytes" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "allowed", type: "bool", internalType: "bool" },
+      { name: "error", type: "string", internalType: "string" },
+      { name: "", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "querySealOutput",
+    inputs: [
+      { name: "ctHash", type: "uint256", internalType: "uint256" },
+      { name: "", type: "uint256", internalType: "uint256" },
+      {
+        name: "permission",
+        type: "tuple",
+        internalType: "struct Permission",
+        components: [
+          { name: "issuer", type: "address", internalType: "address" },
+          { name: "expiration", type: "uint64", internalType: "uint64" },
+          { name: "recipient", type: "address", internalType: "address" },
+          { name: "validatorId", type: "uint256", internalType: "uint256" },
+          {
+            name: "validatorContract",
+            type: "address",
+            internalType: "address",
+          },
+          { name: "sealingKey", type: "bytes32", internalType: "bytes32" },
+          { name: "issuerSignature", type: "bytes", internalType: "bytes" },
+          { name: "recipientSignature", type: "bytes", internalType: "bytes" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "allowed", type: "bool", internalType: "bool" },
+      { name: "error", type: "string", internalType: "string" },
+      { name: "", type: "bytes32", internalType: "bytes32" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "seal",
+    inputs: [
+      { name: "input", type: "uint256", internalType: "uint256" },
+      { name: "key", type: "bytes32", internalType: "bytes32" },
+    ],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    stateMutability: "pure",
+  },
+  {
+    type: "function",
+    name: "taskManager",
+    inputs: [],
+    outputs: [
+      { name: "", type: "address", internalType: "contract TaskManager" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "unseal",
+    inputs: [
+      { name: "hashed", type: "bytes32", internalType: "bytes32" },
+      { name: "key", type: "bytes32", internalType: "bytes32" },
+    ],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "pure",
+  },
+  { type: "error", name: "NotAllowed", inputs: [] },
+  { type: "error", name: "SealingKeyInvalid", inputs: [] },
+  { type: "error", name: "SealingKeyMissing", inputs: [] },
+] as const;

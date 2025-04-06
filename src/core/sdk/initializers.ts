@@ -2,19 +2,16 @@
 import {
   AbstractProvider,
   AbstractSigner,
+  CofhejsError,
+  CofhejsErrorCode,
   Environment,
   InitializationParams,
-  Result,
-  ResultErr,
-  ResultOk,
 } from "../../types";
 
-type InitializerReturn = Promise<
-  Result<{
-    signer: AbstractSigner | undefined;
-    provider: AbstractProvider | undefined;
-  }>
->;
+type InitializerReturn = Promise<{
+  signer: AbstractSigner;
+  provider: AbstractProvider;
+}>;
 
 // Shared initializers
 
@@ -37,11 +34,24 @@ export type ViemInitializerParams = Omit<
 export async function getViemAbstractProviders(
   params: ViemInitializerParams,
 ): InitializerReturn {
+  if (!params.viemClient) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InitViemFailed,
+      message: `Viem client not provided.`,
+    });
+  }
+  if (!params.viemWalletClient) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InitViemFailed,
+      message: `Viem wallet client not provided.`,
+    });
+  }
+
   try {
     // Extract Viem-specific parameters
     const { viemClient, viemWalletClient } = params;
 
-    const provider = {
+    const provider: AbstractProvider = {
       getChainId: async () => {
         return await viemClient.getChainId();
       },
@@ -56,50 +66,45 @@ export async function getViemAbstractProviders(
     };
 
     // Create signer adapter if wallet client is provided
-    const signer: AbstractSigner | undefined = viemWalletClient
-      ? {
-          getAddress: async (): Promise<string> => {
-            return viemWalletClient
-              .getAddresses()
-              .then((addresses: string) => addresses[0]);
-          },
-          signTypedData: async (
-            domain: any,
-            types: any,
-            value: any,
-          ): Promise<string> => {
-            return await viemWalletClient.signTypedData({
-              domain,
-              types,
-              primaryType: Object.keys(types)[0], // Usually the primary type is the first key in types
-              message: value,
-            });
-          },
-          provider: provider,
-          sendTransaction: async (tx: {
-            to: string;
-            data: string;
-          }): Promise<string> => {
-            return await viemWalletClient.sendTransaction(tx);
-          },
-          // Add other signer methods as needed
-        }
-      : undefined;
+    const signer: AbstractSigner = {
+      getAddress: async (): Promise<string> => {
+        return viemWalletClient
+          .getAddresses()
+          .then((addresses: string) => addresses[0]);
+      },
+      signTypedData: async (
+        domain: any,
+        types: any,
+        value: any,
+      ): Promise<string> => {
+        return await viemWalletClient.signTypedData({
+          domain,
+          types,
+          primaryType: Object.keys(types)[0], // Usually the primary type is the first key in types
+          message: value,
+        });
+      },
+      provider: provider,
+      sendTransaction: async (tx: {
+        to: string;
+        data: string;
+      }): Promise<string> => {
+        return await viemWalletClient.sendTransaction(tx);
+      },
+      // Add other signer methods as needed
+    };
 
     // Call the original initialize function with adapted parameters
-    return ResultOk({
+    return {
       signer,
       provider,
-    });
+    };
   } catch (error) {
-    if (params.ignoreErrors) {
-      console.warn("Error in initializeWithViem:", error);
-      return ResultOk({
-        signer: undefined,
-        provider: undefined,
-      });
-    }
-    return ResultErr(`Failed to initialize with Viem: ${error}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InitViemFailed,
+      message: `Failed to initialize with Viem.`,
+      cause: error instanceof Error ? error : undefined,
+    });
   }
 }
 
@@ -107,7 +112,6 @@ export type EthersInitializerParams = Omit<
   InitializationParams,
   "tfhePublicKeySerializer" | "compactPkeCrsSerializer" | "provider" | "signer"
 > & {
-  ignoreErrors?: boolean;
   generatePermit?: boolean;
   ethersProvider: any; // Ethers provider (e.g., Web3Provider connected to window.ethereum)
   ethersSigner?: any; // Ethers signer (usually provider.getSigner())
@@ -137,49 +141,44 @@ export async function getEthersAbstractProviders(
       },
     };
 
-    const signer: AbstractSigner | undefined = ethersSigner
-      ? {
-          getAddress: async () => {
-            return await ethersSigner.getAddress();
-          },
-          signTypedData: async (domain: any, types: any, value: any) => {
-            // Ethers v5 uses _signTypedData
-            if (typeof ethersSigner._signTypedData === "function") {
-              return await ethersSigner._signTypedData(domain, types, value);
-            }
-            // Ethers v6 uses signTypedData
-            else if (typeof ethersSigner.signTypedData === "function") {
-              return await ethersSigner.signTypedData(domain, types, value);
-            }
-            // Fallback for other versions or implementations
-            else {
-              throw new Error(
-                "Ethers signer does not support signTypedData or _signTypedData",
-              );
-            }
-          },
-          provider: provider,
-          sendTransaction: async (tx: {
-            to: string;
-            data: string;
-          }): Promise<string> => {
-            return await ethersSigner.sendTransaction(tx);
-          },
+    const signer: AbstractSigner = {
+      getAddress: async () => {
+        return await ethersSigner.getAddress();
+      },
+      signTypedData: async (domain: any, types: any, value: any) => {
+        // Ethers v5 uses _signTypedData
+        if (typeof ethersSigner._signTypedData === "function") {
+          return await ethersSigner._signTypedData(domain, types, value);
         }
-      : undefined;
+        // Ethers v6 uses signTypedData
+        else if (typeof ethersSigner.signTypedData === "function") {
+          return await ethersSigner.signTypedData(domain, types, value);
+        }
+        // Fallback for other versions or implementations
+        else {
+          throw new Error(
+            "Ethers signer does not support signTypedData or _signTypedData",
+          );
+        }
+      },
+      provider: provider,
+      sendTransaction: async (tx: {
+        to: string;
+        data: string;
+      }): Promise<string> => {
+        return await ethersSigner.sendTransaction(tx);
+      },
+    };
 
-    return ResultOk({
+    return {
       signer,
       provider,
-    });
+    };
   } catch (error) {
-    if (params.ignoreErrors) {
-      console.warn("Error in initializeWithEthers:", error);
-      return ResultOk({
-        signer: undefined,
-        provider: undefined,
-      });
-    }
-    return ResultErr(`Failed to initialize with ethers: ${error}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InitEthersFailed,
+      message: `Failed to initialize with ethers.`,
+      cause: error instanceof Error ? error : undefined,
+    });
   }
 }

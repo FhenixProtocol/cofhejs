@@ -14,13 +14,13 @@ import {
   PermitOptions,
   PermitInterface,
   Permission,
-  Result,
-  ResultErr,
-  ResultOk,
   InitializationParams,
   EncryptableItem,
   FheTypes,
   UnsealedItem,
+  CofhejsError,
+  CofhejsErrorCode,
+  wrapFunction,
 } from "../../types";
 import { mockDecrypt, mockSealOutput } from "./testnet";
 import { bytesToBigInt } from "../utils";
@@ -37,25 +37,28 @@ export const initializeCore = async (
     ignoreErrors?: boolean;
     generatePermit?: boolean;
   },
-): Promise<Result<Permit | undefined>> => {
+): Promise<Permit | undefined> => {
   if (params.provider == null)
-    return ResultErr(
-      "initialize :: missing provider - Please provide an AbstractProvider interface",
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.MissingProviderParam,
+      message: "Missing initialization parameter `provider`",
+    });
 
   if (params.securityZones != null && params.securityZones.length === 0)
-    return ResultErr(
-      "initialize :: a list of securityZones was provided, but it is empty",
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.MissingSecurityZonesParam,
+      message:
+        "Initialization parameter provided but empty `securityZones = []`",
+    });
 
   await _store_initialize(params);
 
   // `generatePermit` must set to `false` to early exit here
-  if (params.generatePermit === false) return ResultOk(undefined);
+  if (params.generatePermit === false) return undefined;
 
   // Return the existing active permit
-  const userActivePermit = getPermit();
-  if (userActivePermit.success) return userActivePermit;
+  const userActivePermit = getPermit_asResult();
+  if (userActivePermit.success) return userActivePermit.data;
 
   // Create permit and return it
   return createPermit();
@@ -66,7 +69,7 @@ export const initializeCore = async (
  */
 const _checkInitialized = (
   state: SdkStore,
-  options?: {
+  requirements?: {
     fheKeys?: boolean;
     provider?: boolean;
     signer?: boolean;
@@ -75,44 +78,55 @@ const _checkInitialized = (
     thresholdNetworkUrl?: boolean;
   },
 ) => {
-  if (
-    !state.isTestnet &&
-    options?.fheKeys !== false &&
-    !state.fheKeysInitialized
-  ) {
-    return ResultErr("cofhejs not initialized. Use `cofhejs.initialize(...)`.");
+  const {
+    fheKeys,
+    provider,
+    signer,
+    coFheUrl,
+    verifierUrl,
+    thresholdNetworkUrl,
+  } = requirements ?? {};
+
+  if (!state.isTestnet && fheKeys !== false && !state.fheKeysInitialized) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.NotInitialized,
+      message: "FHE publicKey or CRS not initialized.",
+    });
   }
 
-  if (!state.isTestnet && options?.coFheUrl !== false && !state.coFheUrl)
-    return ResultErr(
-      "cofhejs not initialized with a coFheUrl. Set `coFheUrl` in `cofhejs.initialize`.",
-    );
+  if (!state.isTestnet && coFheUrl !== false && !state.coFheUrl)
+    throw new CofhejsError({
+      code: CofhejsErrorCode.NotInitialized,
+      message: "`coFheUrl` missing from `cofhejs.initialize`.",
+    });
 
-  if (!state.isTestnet && options?.verifierUrl !== false && !state.verifierUrl)
-    return ResultErr(
-      "cofhejs not initialized with a verifierUrl. Set `verifierUrl` in `cofhejs.initialize`.",
-    );
+  if (!state.isTestnet && verifierUrl !== false && !state.verifierUrl)
+    throw new CofhejsError({
+      code: CofhejsErrorCode.NotInitialized,
+      message: "`verifierUrl` missing from `cofhejs.initialize`.",
+    });
 
   if (
     !state.isTestnet &&
-    options?.thresholdNetworkUrl !== false &&
+    thresholdNetworkUrl !== false &&
     !state.thresholdNetworkUrl
   )
-    return ResultErr(
-      "cofhejs not initialized with a thresholdNetworkUrl. Set `thresholdNetworkUrl` in `cofhejs.initialize`.",
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.NotInitialized,
+      message: "`thresholdNetworkUrl` missing from `cofhejs.initialize`.",
+    });
 
-  if (options?.provider !== false && !state.providerInitialized)
-    return ResultErr(
-      "cofhejs not initialized with valid provider. Use `cofhejs.initialize(...)` with a valid provider that satisfies `AbstractProvider`.",
-    );
+  if (provider !== false && !state.providerInitialized)
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ProviderNotInitialized,
+      message: "`provider` missing from `cofhejs.initialize`.",
+    });
 
-  if (options?.signer !== false && !state.signerInitialized)
-    return ResultErr(
-      "cofhejs not initialized with a valid signer. Use `cofhejs.initialize(...)` with a valid signer that satisfies `AbstractSigner`.",
-    );
-
-  return ResultOk(null);
+  if (signer !== false && !state.signerInitialized)
+    throw new CofhejsError({
+      code: CofhejsErrorCode.SignerNotInitialized,
+      message: "`signer` missing from `cofhejs.initialize`.",
+    });
 };
 
 // Permit
@@ -129,12 +143,10 @@ const _checkInitialized = (
  */
 export const createPermit = async (
   options?: PermitOptions,
-): Promise<Result<Permit>> => {
+): Promise<Permit> => {
   const state = _sdkStore.getState();
 
-  const initialized = _checkInitialized(state);
-  if (!initialized.success)
-    return ResultErr(`${createPermit.name} :: ${initialized.error}`);
+  _checkInitialized(state);
 
   const optionsWithDefaults: PermitOptions = {
     type: "self",
@@ -142,18 +154,12 @@ export const createPermit = async (
     ...options,
   };
 
-  let permit: Permit;
-  try {
-    permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
-  } catch (e) {
-    console.log("createPermit :: e", e);
-    return ResultErr(`${createPermit.name} :: ${e}`);
-  }
+  const permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
 
   permitStore.setPermit(state.account!, permit);
   permitStore.setActivePermitHash(state.account!, permit.getHash());
 
-  return ResultOk(permit);
+  return permit;
 };
 
 /**
@@ -166,20 +172,14 @@ export const createPermit = async (
  */
 export const importPermit = async (
   imported: string | PermitInterface,
-): Promise<Result<Permit>> => {
+): Promise<Permit> => {
   const state = _sdkStore.getState();
 
-  const initialized = _checkInitialized(state);
-  if (!initialized.success)
-    return ResultErr(`${createPermit.name} :: ${initialized.error}`);
+  _checkInitialized(state);
 
   // Import validation
   if (typeof imported === "string") {
-    try {
-      imported = JSON.parse(imported);
-    } catch (e) {
-      return ResultErr(`importPermit :: json parsing failed - ${e}`);
-    }
+    imported = JSON.parse(imported);
   }
 
   const {
@@ -187,41 +187,43 @@ export const importPermit = async (
     data: parsedPermit,
     error: permitParsingError,
   } = PermitParamsValidator.safeParse(imported as PermitInterface);
+
   if (!success) {
     const errorString = Object.entries(permitParsingError.flatten().fieldErrors)
       .map(([field, err]) => `- ${field}: ${err}`)
       .join("\n");
-    return ResultErr(`importPermit :: invalid permit data - ${errorString}`);
+
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidPermitData,
+      message: errorString,
+    });
   }
   if (parsedPermit.type !== "self") {
     if (parsedPermit.issuer === state.account) parsedPermit.type = "sharing";
     else if (parsedPermit.recipient === state.account)
       parsedPermit.type = "recipient";
     else {
-      return ResultErr(
-        `importPermit :: invalid Permit - connected account <${state.account}> is not issuer or recipient`,
-      );
+      throw new CofhejsError({
+        code: CofhejsErrorCode.InvalidPermitData,
+        message: `Connected account <${state.account}> is not issuer or recipient`,
+      });
     }
   }
 
-  let permit: Permit;
-  try {
-    permit = await Permit.create(parsedPermit as PermitInterface);
-  } catch (e) {
-    return ResultErr(`importPermit :: ${e}`);
-  }
+  const permit = await Permit.create(parsedPermit as PermitInterface);
 
   const { valid, error } = permit.isValid();
   if (!valid) {
-    return ResultErr(
-      `importPermit :: newly imported permit is invalid - ${error}`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidPermitData,
+      message: `Imported permit is invalid - ${error}`,
+    });
   }
 
   permitStore.setPermit(state.account!, permit);
   permitStore.setActivePermitHash(state.account!, permit.getHash());
 
-  return ResultOk(permit);
+  return permit;
 };
 
 /**
@@ -231,22 +233,21 @@ export const importPermit = async (
  *
  * @param {string} hash - The `Permit.getHash` of the target permit.
  */
-export const selectActivePermit = (hash: string): Result<Permit> => {
+export const selectActivePermit = (hash: string): Permit => {
   const state = _sdkStore.getState();
 
-  const initialized = _checkInitialized(state);
-  if (!initialized.success)
-    return ResultErr(`${selectActivePermit.name} :: ${initialized.error}`);
+  _checkInitialized(state);
 
   const permit = permitStore.getPermit(state.account, hash);
   if (permit == null)
-    return ResultErr(
-      `${selectActivePermit.name} :: Permit with hash <${hash}> not found`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `Permit with hash <${hash}> not found`,
+    });
 
   permitStore.setActivePermitHash(state.account!, permit.getHash());
 
-  return ResultOk(permit);
+  return permit;
 };
 
 /**
@@ -256,27 +257,33 @@ export const selectActivePermit = (hash: string): Result<Permit> => {
  * @param {string} hash - Optional `Permit.getHash` of the permit.
  * @returns {Result<Permit>} - The active permit or permit associated with `hash` as a Result object.
  */
-export const getPermit = (hash?: string): Result<Permit> => {
+export const getPermit = (hash?: string): Permit => {
   const state = _sdkStore.getState();
 
-  const initialized = _checkInitialized(state);
-  if (!initialized.success)
-    return ResultErr(`${getPermit.name} :: ${initialized.error}`);
+  _checkInitialized(state);
 
   if (hash == null) {
     const permit = permitStore.getActivePermit(state.account);
     if (permit == null)
-      return ResultErr(`getPermit :: active permit not found`);
+      throw new CofhejsError({
+        code: CofhejsErrorCode.PermitNotFound,
+        message: `Active permit not found`,
+      });
 
-    return ResultOk(permit);
+    return permit;
   }
 
   const permit = permitStore.getPermit(state.account, hash);
   if (permit == null)
-    return ResultErr(`getPermit :: permit with hash <${hash}> not found`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `Permit with hash <${hash}> not found`,
+    });
 
-  return ResultOk(permit);
+  return permit;
 };
+
+export const getPermit_asResult = wrapFunction(getPermit);
 
 /**
  * Retrieves a stored permission based on the permit's hash.
@@ -286,31 +293,26 @@ export const getPermit = (hash?: string): Result<Permit> => {
  * @param {string} hash - Optional hash of the permission to get, defaults to active permit's permission
  * @returns {Result<Permission>} - The active permission or permission associated with `hash`, as a result object.
  */
-export const getPermission = (hash?: string): Result<Permission> => {
-  const permitResult = getPermit(hash);
-  if (!permitResult.success)
-    return ResultErr(`${getPermission.name} :: ${permitResult.error}`);
-
-  return ResultOk(permitResult.data.getPermission());
+export const getPermission = (hash?: string): Permission => {
+  const permit = getPermit(hash);
+  return permit.getPermission();
 };
 
 /**
  * Exports all stored permits.
  * @returns {Result<Record<string, Permit>>} - All stored permits.
  */
-export const getAllPermits = (): Result<Record<string, Permit>> => {
+export const getAllPermits = (): Record<string, Permit> => {
   const state = _sdkStore.getState();
 
-  const initialized = _checkInitialized(state);
-  if (!initialized.success)
-    return ResultErr(`${getAllPermits.name} :: ${initialized.error}`);
+  _checkInitialized(state);
 
-  return ResultOk(permitStore.getPermits(state.account));
+  return permitStore.getPermits(state.account);
 };
 
 // Encrypt (Steps)
 
-export function encryptGetKeys(): Result<{
+export function encryptGetKeys(): {
   fhePublicKey: Uint8Array;
   crs: Uint8Array;
   coFheUrl: string;
@@ -318,50 +320,47 @@ export function encryptGetKeys(): Result<{
   thresholdNetworkUrl: string;
   account: string;
   chainId: string;
-}> {
+} {
   const state = _sdkStore.getState();
 
   // Only need to check `fheKeysInitialized`, signer and provider not needed for encryption
-  const initialized = _checkInitialized(state, {
-    provider: false,
-    signer: false,
-  });
-  if (!initialized.success) return ResultErr(`encrypt :: ${initialized.error}`);
+  _checkInitialized(state);
 
   if (state.account == null)
-    return ResultErr("encrypt :: account uninitialized");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.AccountUninitialized,
+      message: "account uninitialized",
+    });
 
   if (state.chainId == null)
-    return ResultErr("encrypt :: chainId uninitialized");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ChainIdUninitialized,
+      message: "chainId uninitialized",
+    });
 
   const fhePublicKey = _store_getConnectedChainFheKey(0);
   if (fhePublicKey == null)
-    return ResultErr("encrypt :: fheKey for current chain not found");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.FheKeyNotFound,
+      message: "fheKey for current chain not found",
+    });
 
   const crs = _store_getCrs(state.chainId);
   if (crs == null)
-    return ResultErr("encrypt :: CRS for current chain not found");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.CrsNotFound,
+      message: "CRS for current chain not found",
+    });
 
-  const coFheUrl = state.coFheUrl;
-  if (coFheUrl == null) return ResultErr("encrypt :: coFheUrl not initialized");
-
-  const verifierUrl = state.verifierUrl;
-  if (verifierUrl == null)
-    return ResultErr("encrypt :: verifierUrl not initialized");
-
-  const thresholdNetworkUrl = state.thresholdNetworkUrl;
-  if (thresholdNetworkUrl == null)
-    return ResultErr("encrypt :: thresholdNetworkUrl not initialized");
-
-  return ResultOk({
+  return {
     fhePublicKey,
     crs,
-    coFheUrl,
-    verifierUrl,
-    thresholdNetworkUrl,
+    coFheUrl: state.coFheUrl!,
+    verifierUrl: state.verifierUrl!,
+    thresholdNetworkUrl: state.thresholdNetworkUrl!,
     account: state.account,
     chainId: state.chainId,
-  });
+  };
 }
 
 export function encryptExtract<T>(item: T): EncryptableItem[];
@@ -441,37 +440,39 @@ export async function unseal<U extends FheTypes>(
   utype: U,
   account?: string,
   permitHash?: string,
-): Promise<Result<UnsealedItem<U>>> {
-  const initialized = _checkInitialized(_sdkStore.getState());
-  if (!initialized.success)
-    return ResultErr(`${unseal.name} :: ${initialized.error}`);
+): Promise<UnsealedItem<U>> {
+  _checkInitialized(_sdkStore.getState());
+  const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl!;
+
+  const provider = _sdkStore.getState().provider;
+  if (provider == null)
+    throw new CofhejsError({
+      code: CofhejsErrorCode.ProviderNotInitialized,
+      message: "provider not initialized",
+    });
 
   const resolvedAccount = account ?? _sdkStore.getState().account;
   const resolvedHash =
     permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
+
   if (resolvedAccount == null || resolvedHash == null) {
-    return ResultErr(
-      `unseal :: Permit hash not provided and active Permit not found`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `Permit hash not provided and active Permit not found`,
+    });
   }
 
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
-    return ResultErr(
-      `unseal :: Permit with account <${account}> and hash <${permitHash}> not found`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `Permit with account <${account}> and hash <${permitHash}> not found`,
+    });
   }
-
-  const provider = _sdkStore.getState().provider;
-  if (provider == null) return ResultErr("unseal :: provider uninitialized");
 
   if (_sdkStore.getState().isTestnet) {
     return mockSealOutput(provider, ctHash, utype, permit);
   }
-
-  const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl;
-  if (thresholdNetworkUrl == null)
-    return ResultErr("unseal :: thresholdNetworkUrl not initialized");
 
   let sealed: EthEncryptedData | undefined;
 
@@ -490,26 +491,31 @@ export async function unseal<U extends FheTypes>(
     });
 
     const sealOutput = await sealOutputRes.json();
-    console.log("unseal sealOutput", sealOutput);
     sealed = sealOutput.sealed;
-    console.log("unseal sealed", sealed);
   } catch (e) {
-    console.log("unseal :: sealOutput request failed ::", e);
-    return ResultErr(`unseal :: sealOutput request failed :: ${e}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.SealOutputFailed,
+      message: `sealOutput request failed`,
+    });
   }
 
   if (sealed == null) {
-    return ResultErr("unseal :: sealed data not found");
+    throw new CofhejsError({
+      code: CofhejsErrorCode.SealOutputReturnedNull,
+      message: "sealed data not found",
+    });
   }
 
   const unsealed = permit.unseal(sealed);
-  console.log("unsealed", unsealed);
 
   if (!isValidUtype(utype)) {
-    return ResultErr(`unseal :: invalid utype :: ${utype}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidUtype,
+      message: `invalid utype :: ${utype}`,
+    });
   }
 
-  return ResultOk(convertViaUtype(utype, unsealed)) as Result<UnsealedItem<U>>;
+  return convertViaUtype(utype, unsealed);
 }
 
 export async function decrypt<U extends FheTypes>(
@@ -517,39 +523,34 @@ export async function decrypt<U extends FheTypes>(
   utype: U,
   account?: string,
   permitHash?: string,
-): Promise<Result<UnsealedItem<U>>> {
-  const initialized = _checkInitialized(_sdkStore.getState());
-  if (!initialized.success)
-    return ResultErr(`${decrypt.name} :: ${initialized.error}`);
+): Promise<UnsealedItem<U>> {
+  _checkInitialized(_sdkStore.getState());
+  const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl!;
 
   const resolvedAccount = account ?? _sdkStore.getState().account;
   const resolvedHash =
     permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
   if (resolvedAccount == null || resolvedHash == null) {
-    return ResultErr(
-      `decrypt :: Permit hash not provided and active Permit not found`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `Permit hash not provided and active Permit not found`,
+    });
   }
-
-  console.log("decrypt :: resolvedAccount", resolvedAccount);
-  console.log("decrypt :: resolvedHash", resolvedHash);
 
   const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
   if (permit == null) {
-    return ResultErr(
-      `decrypt :: Permit with account <${account}> and hash <${permitHash}> not found`,
-    );
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `Permit with account <${account}> and hash <${permitHash}> not found`,
+    });
   }
 
   if (_sdkStore.getState().isTestnet) {
     return mockDecrypt(_sdkStore.getState().provider!, ctHash, utype, permit);
   }
 
-  const thresholdNetworkUrl = _sdkStore.getState().thresholdNetworkUrl;
-  if (thresholdNetworkUrl == null)
-    return ResultErr("decrypt :: thresholdNetworkUrl not initialized");
-
   let decrypted: bigint | undefined;
+  let decryptOutput: any | undefined;
 
   try {
     const body = {
@@ -557,10 +558,6 @@ export async function decrypt<U extends FheTypes>(
       host_chain_id: Number(_sdkStore.getState().chainId),
       permit: permit.getPermission(),
     };
-    console.log(
-      "decrypt thresholdNetworkUrl",
-      `${thresholdNetworkUrl}/decrypt`,
-    );
 
     const decryptOutputRes = await fetch(`${thresholdNetworkUrl}/decrypt`, {
       method: "POST",
@@ -569,30 +566,39 @@ export async function decrypt<U extends FheTypes>(
       },
       body: JSON.stringify(body),
     });
-    console.log("decryptOutputRes", decryptOutputRes);
-    const decryptOutput = await decryptOutputRes.json();
-    console.log("decryptOutput", decryptOutput);
+
+    decryptOutput = await decryptOutputRes.json();
     decrypted = bytesToBigInt(decryptOutput.decrypted);
+  } catch (e: unknown) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.DecryptFailed,
+      message: `decrypt request failed`,
+      cause: e as Error,
+    });
+  }
 
-    if (decrypted == null) {
-      return ResultErr("decrypt :: decrypted data not found");
-    }
+  if (decryptOutput == null || decrypted == null) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.DecryptReturnedNull,
+      message: "decrypted data not found",
+    });
+  }
 
-    if (decryptOutput.encryption_type !== utype) {
-      return ResultErr(
-        `decrypt :: unexpected encryption type :: received ${decryptOutput.encryption_type}, expected ${utype}`,
-      );
-    }
-  } catch (e) {
-    console.log("decrypt :: decrypt request failed ::", e);
-    return ResultErr(`decrypt :: decrypt request failed :: ${e}`);
+  if (decryptOutput.encryption_type !== utype) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidUtype,
+      message: `unexpected encryption type :: received ${decryptOutput.encryption_type}, expected ${utype}`,
+    });
   }
 
   if (!isValidUtype(utype)) {
-    return ResultErr(`decrypt :: invalid utype :: ${utype}`);
+    throw new CofhejsError({
+      code: CofhejsErrorCode.InvalidUtype,
+      message: `invalid utype :: ${utype}`,
+    });
   }
 
-  return ResultOk(convertViaUtype(utype, decrypted)) as Result<UnsealedItem<U>>;
+  return convertViaUtype(utype, decrypted);
 }
 
 export * from "./initializers";

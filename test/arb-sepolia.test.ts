@@ -30,7 +30,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe.skip("Arbitrum Sepolia Tests", () => {
+describe("Arbitrum Sepolia Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;

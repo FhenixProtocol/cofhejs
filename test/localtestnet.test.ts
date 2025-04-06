@@ -20,13 +20,11 @@ import {
   CoFheInAddress,
   CoFheInBool,
   CoFheInUint8,
-  Result,
   FheTypes,
   EncryptStep,
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
-import { testSealOutput } from "../src/core/sdk/testnet";
 
 describe("Local Testnet (Anvil) Tests", () => {
   let bobPublicKey: string;
@@ -108,32 +106,25 @@ describe("Local Testnet (Anvil) Tests", () => {
   });
 
   it("re-initialize (change account)", async () => {
-    const bobPermit = (await initSdkWithBob())!;
-    expect(bobPermit.error).toEqual(null);
-    expect(bobPermit.data).to.not.equal(undefined);
+    const bobPermit = expectResultSuccess(await initSdkWithBob());
 
     // Bob's new permit is the active permit
 
-    let bobFetchedPermit = await cofhejs.getPermit();
-    expect(bobFetchedPermit.error).toEqual(null);
-    expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
+    const bobFetchedPermit = expectResultSuccess(await cofhejs.getPermit());
+    expect(bobFetchedPermit.getHash()).toEqual(bobPermit?.getHash());
 
-    const adaPermit = (await initSdkWithAda())!;
-    expect(adaPermit.error).toEqual(null);
-    expect(adaPermit.data).to.not.equal(undefined);
+    const adaPermit = expectResultSuccess(await initSdkWithAda());
 
     // Ada does not have an active permit
 
-    const adaFetchedPermit = await cofhejs.getPermit();
-    expect(adaFetchedPermit.error).toEqual(null);
-    expect(adaFetchedPermit.data?.getHash()).toEqual(adaPermit.data?.getHash());
+    const adaFetchedPermit = expectResultSuccess(await cofhejs.getPermit());
+    expect(adaFetchedPermit.getHash()).toEqual(adaPermit?.getHash());
 
     // Switch back to bob
 
     // Bob's active permit is pulled from the store during init and exists
-    bobFetchedPermit = (await initSdkWithBob()) as Result<Permit>;
-    expect(bobFetchedPermit.error).toEqual(null);
-    expect(bobFetchedPermit.data?.getHash()).toEqual(bobPermit.data?.getHash());
+    const bobInitializedPermit = expectResultSuccess(await initSdkWithBob());
+    expect(bobInitializedPermit?.getHash()).toEqual(bobPermit?.getHash());
   });
 
   it("encrypt", { timeout: 320000 }, async () => {
@@ -172,38 +163,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt.data!);
   });
 
-  it("querySealOutput test", async () => {
-    await initSdkWithBob();
-
-    const permit = expectResultSuccess(
-      await cofhejs.createPermit({
-        type: "self",
-        issuer: bobAddress,
-      }),
-    );
-
-    await testSealOutput(bobProvider, FheTypes.Bool, permit.getPermission());
-  });
-
-  // TODO: Re-enable after testSealOutput is working
-  // - architect_dev 2025-04-01
-  //
-  // it.only("queryDecrypt test", async () => {
-  //   await initSdkWithBob();
-
-  //   const permit = expectResultSuccess(
-  //     await cofhejs.createPermit({
-  //       type: "self",
-  //       issuer: bobAddress,
-  //     }),
-  //   );
-
-  //   const jsonRpcProvider = new ethers.JsonRpcProvider(anvilRpcUrl);
-
-  //   await testDecrypt(jsonRpcProvider, FheTypes.Bool, permit.getPermission());
-  // });
-
-  it.only("full flow", { timeout: 320000 }, async () => {
+  it("full flow", { timeout: 320000 }, async () => {
     await initSdkWithBob();
 
     const logState = (state: EncryptStep) => {
