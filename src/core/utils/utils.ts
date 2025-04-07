@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ethers } from "ethers";
 import { isNumber } from "./validation";
 
@@ -255,4 +256,8 @@ export function uint160ToAddress(uint160: bigint): string {
 export function bytesToBigInt(bytes: Uint8Array) {
   const arr = Array.from(bytes); // Ensure it's an array
   return arr.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
+}
+
+export function unwrapCallResult(result: any): string {
+  return typeof result === "string" ? result : result?.data ?? `${result}`;
 }

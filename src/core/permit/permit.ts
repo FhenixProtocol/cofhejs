@@ -315,6 +315,7 @@ export class Permit implements PermitInterface, PermitMetadata {
       to: TaskManagerAddress,
       data: aclCallData,
     });
+
     const [aclAddress] = taskManagerInterface.decodeFunctionResult(
       "acl",
       aclAddressResult,
