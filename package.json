@@ -1,6 +1,6 @@
 {
   "name": "cofhejs",
-  "version": "0.1.3",
+  "version": "0.1.4-alpha.0",
   "description": "The JavaScript SDK for Fhenix's CoFHE Service",
   "exports": {
     "./web": {
