@@ -314,8 +314,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     const aclAddressResult = await provider.call({
       to: TaskManagerAddress,
       data: aclCallData,
-    }) as any;
-
+    });
 
     const [aclAddress] = taskManagerInterface.decodeFunctionResult(
       "acl",
@@ -328,8 +327,7 @@ export class Permit implements PermitInterface, PermitMetadata {
     const domainResult = await provider.call({
       to: aclAddress,
       data: domainCalldata,
-    }) as any;
-
+    });
 
     const [
       _fields,
