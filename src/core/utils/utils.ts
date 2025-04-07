@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ethers } from "ethers";
 import { isNumber } from "./validation";
 
@@ -257,6 +258,6 @@ export function bytesToBigInt(bytes: Uint8Array) {
   return arr.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
 }
 
-export function unwrapCallResult(result: any) {
-  return typeof result === "string" ? result : result.data;
+export function unwrapCallResult(result: any): string {
+  return typeof result === "string" ? result : result?.data ?? `${result}`;
 }
