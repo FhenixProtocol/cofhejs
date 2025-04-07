@@ -256,3 +256,7 @@ export function bytesToBigInt(bytes: Uint8Array) {
   const arr = Array.from(bytes); // Ensure it's an array
   return arr.reduce((acc, byte) => (acc << 8n) + BigInt(byte), 0n);
 }
+
+export function unwrapCallResult(result: any) {
+  return typeof result === "string" ? result : result.data;
+}

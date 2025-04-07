@@ -7,6 +7,7 @@ import {
   Environment,
   InitializationParams,
 } from "../../types";
+import { unwrapCallResult } from "../utils";
 
 type InitializerReturn = Promise<{
   signer: AbstractSigner;
@@ -56,9 +57,9 @@ export async function getViemAbstractProviders(
         return await viemClient.getChainId();
       },
       call: async (transaction: any) => {
-        return await viemClient.call({
+        return unwrapCallResult(await viemClient.call({
           ...transaction,
-        });
+        }));
       },
       send: async (method: string, params: any[]) => {
         return await viemClient.send(method, params);
@@ -136,7 +137,7 @@ export async function getEthersAbstractProviders(
       },
       call: async (transaction: any) => {
         // Pass through to the original provider's call method
-        return await ethersProvider.call(transaction);
+        return unwrapCallResult(await ethersProvider.call(transaction));
       },
       send: async (method: string, params: any[]) => {
         return await ethersProvider.send(method, params);
