@@ -139,11 +139,14 @@ describe("Local Testnet (Anvil) Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    const nestedEncrypt = await cofhejs.encrypt(logState, [
-      { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
-      ["hello", 20n, Encryptable.address(contractAddress)],
-      Encryptable.uint8("10"),
-    ] as const);
+    const nestedEncrypt = await cofhejs.encrypt(
+      [
+        { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
+        ["hello", 20n, Encryptable.address(contractAddress)],
+        Encryptable.uint8("10"),
+      ] as const,
+      logState,
+    );
 
     expect(nestedEncrypt.error).toEqual(null);
     expect(nestedEncrypt.data).to.not.equal(undefined);
@@ -171,7 +174,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     };
 
     const inEncryptUint32 = expectResultSuccess(
-      await cofhejs.encrypt(logState, [Encryptable.uint32(25n)] as const),
+      await cofhejs.encrypt([Encryptable.uint32(25n)] as const, logState),
     )[0];
 
     console.log("inEncryptUint32", inEncryptUint32);
