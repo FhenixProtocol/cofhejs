@@ -39,6 +39,7 @@ import {
   EthersInitializerParams,
   getEthersAbstractProviders,
 } from "../core/sdk/initializers";
+import { marshallEncryptParams } from "../core/utils";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -107,16 +108,30 @@ async function initializeWithEthers(
 }
 
 async function encrypt<T extends any[]>(
-  setState: (state: EncryptStep) => void,
   item: [...T],
-  securityZone = 0,
+  setStateCallback?: (state: EncryptStep) => void,
+): Promise<[...Encrypted_Inputs<T>]>;
+async function encrypt<T extends any[]>(
+  item: [...T],
+  securityZone: number,
+  setStateCallback?: (state: EncryptStep) => void,
+): Promise<[...Encrypted_Inputs<T>]>;
+async function encrypt<T extends any[]>(
+  item: [...T],
+  setStateOrSecurityZone?: ((state: EncryptStep) => void) | number,
+  maybeSetState?: (state: EncryptStep) => void,
 ): Promise<[...Encrypted_Inputs<T>]> {
+  const { securityZone, setStateCallback } = marshallEncryptParams(
+    setStateOrSecurityZone,
+    maybeSetState,
+  );
+
   const state = _sdkStore.getState();
   if (state.isTestnet) {
-    return mockEncrypt(setState, item, securityZone);
+    return mockEncrypt(item, securityZone, setStateCallback);
   }
 
-  setState(EncryptStep.Extract);
+  setStateCallback(EncryptStep.Extract);
 
   const keysResult = encryptGetKeys();
 
@@ -124,14 +139,14 @@ async function encrypt<T extends any[]>(
 
   const encryptableItems = encryptExtract(item);
 
-  setState(EncryptStep.Pack);
+  setStateCallback(EncryptStep.Pack);
 
   const builder = zkPack(
     encryptableItems,
     TfheCompactPublicKey.deserialize(fhePublicKey),
   );
 
-  setState(EncryptStep.Prove);
+  setStateCallback(EncryptStep.Prove);
 
   const proved = await zkProve(
     builder,
@@ -141,7 +156,7 @@ async function encrypt<T extends any[]>(
     chainId,
   );
 
-  setState(EncryptStep.Verify);
+  setStateCallback(EncryptStep.Verify);
 
   const verifyResults = await zkVerify(
     verifierUrl,
@@ -160,7 +175,7 @@ async function encrypt<T extends any[]>(
     }),
   );
 
-  setState(EncryptStep.Replace);
+  setStateCallback(EncryptStep.Replace);
 
   const [preparedInputItems, remainingInItems] = encryptReplace(item, inItems);
 
@@ -170,7 +185,7 @@ async function encrypt<T extends any[]>(
       message: "Some encrypted inputs remaining after replacement",
     });
 
-  setState(EncryptStep.Done);
+  setStateCallback(EncryptStep.Done);
 
   return preparedInputItems;
 }
