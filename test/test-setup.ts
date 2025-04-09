@@ -1,14 +1,3 @@
-import { waitForZkVerifierToStart } from "./utils";
-import {
-  killZkVerifierContainer,
-  runCoFheContainers,
-  runZkVerifierContainer,
-  stopCoFheContainers,
-} from "./docker";
-
-const TEST_ZK_VERIFIER_URL =
-  process.env.TEST_ZK_VERIFIER_URL ?? "http://127.0.0.1:3001";
-
 export const setup = async () => {
   if (process.env.SKIP_LOCAL_ENV === "true") {
     return;

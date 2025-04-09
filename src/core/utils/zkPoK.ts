@@ -1,5 +1,3 @@
-import { toHexString } from "./utils";
-
 export function constructZkPoKMetadata(
   accountAddr: string,
   securityZone: number,

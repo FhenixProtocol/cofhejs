@@ -46,7 +46,7 @@ export const initializeCore = async (
 
   if (params.securityZones != null && params.securityZones.length === 0)
     throw new CofhejsError({
-      code: CofhejsErrorCode.MissingSecurityZonesParam,
+      code: CofhejsErrorCode.EmptySecurityZonesParam,
       message:
         "Initialization parameter provided but empty `securityZones = []`",
     });
