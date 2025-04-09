@@ -25,6 +25,8 @@ import {
   InitializationParams,
   Permission,
   Result,
+  ResultErrOrInternal,
+  ResultOk,
   wrapFunction,
   wrapFunctionAsync,
 } from "../types";
@@ -107,87 +109,102 @@ async function initializeWithEthers(
   });
 }
 
+// NOTE: This function returns the result type directly
+// Usually we use wrapFunctionAsync to wrap this function
+// but in this case the input types are too complex
 async function encrypt<T extends any[]>(
   item: [...T],
   setStateCallback?: (state: EncryptStep) => void,
-): Promise<[...Encrypted_Inputs<T>]>;
+): Promise<Result<[...Encrypted_Inputs<T>]>>;
 async function encrypt<T extends any[]>(
   item: [...T],
   securityZone: number,
   setStateCallback?: (state: EncryptStep) => void,
-): Promise<[...Encrypted_Inputs<T>]>;
+): Promise<Result<[...Encrypted_Inputs<T>]>>;
 async function encrypt<T extends any[]>(
   item: [...T],
   setStateOrSecurityZone?: ((state: EncryptStep) => void) | number,
   maybeSetState?: (state: EncryptStep) => void,
-): Promise<[...Encrypted_Inputs<T>]> {
-  const { securityZone, setStateCallback } = marshallEncryptParams(
-    setStateOrSecurityZone,
-    maybeSetState,
-  );
+): Promise<Result<[...Encrypted_Inputs<T>]>> {
+  try {
+    const { securityZone, setStateCallback } = marshallEncryptParams(
+      setStateOrSecurityZone,
+      maybeSetState,
+    );
 
-  const state = _sdkStore.getState();
-  if (state.isTestnet) {
-    return mockEncrypt(item, securityZone, setStateCallback);
-  }
+    const state = _sdkStore.getState();
+    if (state.isTestnet) {
+      const mockEncryptResult = await mockEncrypt(
+        item,
+        securityZone,
+        setStateCallback,
+      );
+      return ResultOk(mockEncryptResult);
+    }
 
-  setStateCallback(EncryptStep.Extract);
+    setStateCallback(EncryptStep.Extract);
 
-  const keysResult = encryptGetKeys();
+    const keysResult = encryptGetKeys();
 
-  const { fhePublicKey, crs, verifierUrl, account, chainId } = keysResult;
+    const { fhePublicKey, crs, verifierUrl, account, chainId } = keysResult;
 
-  const encryptableItems = encryptExtract(item);
+    const encryptableItems = encryptExtract(item);
 
-  setStateCallback(EncryptStep.Pack);
+    setStateCallback(EncryptStep.Pack);
 
-  const builder = zkPack(
-    encryptableItems,
-    TfheCompactPublicKey.deserialize(fhePublicKey),
-  );
+    const builder = zkPack(
+      encryptableItems,
+      TfheCompactPublicKey.deserialize(fhePublicKey),
+    );
 
-  setStateCallback(EncryptStep.Prove);
+    setStateCallback(EncryptStep.Prove);
 
-  const proved = await zkProve(
-    builder,
-    CompactPkeCrs.deserialize(crs),
-    account,
-    securityZone,
-    chainId,
-  );
-
-  setStateCallback(EncryptStep.Verify);
-
-  const verifyResults = await zkVerify(
-    verifierUrl,
-    proved,
-    account,
-    securityZone,
-    chainId,
-  );
-
-  const inItems: CoFheInItem[] = verifyResults.map(
-    ({ ct_hash, signature }, index) => ({
-      ctHash: BigInt(ct_hash),
+    const proved = await zkProve(
+      builder,
+      CompactPkeCrs.deserialize(crs),
+      account,
       securityZone,
-      utype: encryptableItems[index].utype,
-      signature,
-    }),
-  );
+      chainId,
+    );
 
-  setStateCallback(EncryptStep.Replace);
+    setStateCallback(EncryptStep.Verify);
 
-  const [preparedInputItems, remainingInItems] = encryptReplace(item, inItems);
+    const verifyResults = await zkVerify(
+      verifierUrl,
+      proved,
+      account,
+      securityZone,
+      chainId,
+    );
 
-  if (remainingInItems.length !== 0)
-    throw new CofhejsError({
-      code: CofhejsErrorCode.EncryptRemainingInItems,
-      message: "Some encrypted inputs remaining after replacement",
-    });
+    const inItems: CoFheInItem[] = verifyResults.map(
+      ({ ct_hash, signature }, index) => ({
+        ctHash: BigInt(ct_hash),
+        securityZone,
+        utype: encryptableItems[index].utype,
+        signature,
+      }),
+    );
 
-  setStateCallback(EncryptStep.Done);
+    setStateCallback(EncryptStep.Replace);
 
-  return preparedInputItems;
+    const [preparedInputItems, remainingInItems] = encryptReplace(
+      item,
+      inItems,
+    );
+
+    if (remainingInItems.length !== 0)
+      throw new CofhejsError({
+        code: CofhejsErrorCode.EncryptRemainingInItems,
+        message: "Some encrypted inputs remaining after replacement",
+      });
+
+    setStateCallback(EncryptStep.Done);
+
+    return ResultOk(preparedInputItems);
+  } catch (error) {
+    return ResultErrOrInternal(error);
+  }
 }
 
 export const cofhejs = {
@@ -205,7 +222,7 @@ export const cofhejs = {
   ) => Result<Permission>,
   getAllPermits: wrapFunction(getAllPermits),
 
-  encrypt: wrapFunctionAsync(encrypt),
+  encrypt: encrypt,
 
   unseal: wrapFunctionAsync(unseal),
   decrypt: wrapFunctionAsync(decrypt),

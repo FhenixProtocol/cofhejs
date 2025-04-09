@@ -26,7 +26,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe("Local Testnet (Anvil) Tests", () => {
+describe("Local Testnet (Hardhat Node) Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -41,8 +41,8 @@ describe("Local Testnet (Anvil) Tests", () => {
   const contractAddress2 = "0xB170fC5BAC4a87A63fC84653Ee7e0db65CC62f96";
   const counterProjectId = "COUNTER";
   const uniswapProjectId = "UNISWAP";
-  const anvilRpcUrl = "http://127.0.0.1:8545";
-  const anvilChainId = 31337n;
+  const hardhatRpcUrl = "http://127.0.0.1:8545";
+  const hardhatChainId = 31337n;
 
   const initSdkWithBob = async () => {
     return cofhejs.initialize({
@@ -64,8 +64,8 @@ describe("Local Testnet (Anvil) Tests", () => {
     bobProvider = new MockProvider(
       bobPublicKey,
       BobWallet,
-      anvilRpcUrl,
-      anvilChainId,
+      hardhatRpcUrl,
+      hardhatChainId,
     );
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
@@ -74,8 +74,8 @@ describe("Local Testnet (Anvil) Tests", () => {
     adaProvider = new MockProvider(
       adaPublicKey,
       AdaWallet,
-      anvilRpcUrl,
-      anvilChainId,
+      hardhatRpcUrl,
+      hardhatChainId,
     );
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();
