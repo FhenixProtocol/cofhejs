@@ -7,7 +7,7 @@ export enum CofhejsErrorCode {
   InitEthersFailed = "INIT_ETHERS_FAILED",
   NotInitialized = "NOT_INITIALIZED",
   MissingProviderParam = "MISSING_PROVIDER_PARAM",
-  MissingSecurityZonesParam = "MISSING_SECURITY_ZONES_PARAM",
+  EmptySecurityZonesParam = "EMPTY_SECURITY_ZONES_PARAM",
   InvalidPermitData = "INVALID_PERMIT_DATA",
   InvalidPermitDomain = "INVALID_PERMIT_DOMAIN",
   PermitNotFound = "PERMIT_NOT_FOUND",
