@@ -120,3 +120,5 @@ export enum EncryptStep {
   Replace = "replace",
   Done = "done",
 }
+
+export type EncryptSetStateFn = (state: EncryptStep) => void;

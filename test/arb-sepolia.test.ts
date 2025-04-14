@@ -143,11 +143,14 @@ describe("Arbitrum Sepolia Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    const nestedEncryptResult = await cofhejs.encrypt(logState, [
-      { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
-      ["hello", 20n, Encryptable.address(contractAddress)],
-      Encryptable.uint8("10"),
-    ] as const);
+    const nestedEncryptResult = await cofhejs.encrypt(
+      [
+        { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
+        ["hello", 20n, Encryptable.address(contractAddress)],
+        Encryptable.uint8("10"),
+      ] as const,
+      logState,
+    );
     const nestedEncrypt = expectResultSuccess(nestedEncryptResult);
 
     type ExpectedEncryptedType = [

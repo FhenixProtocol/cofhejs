@@ -10,9 +10,9 @@ import {
   CofhejsErrorCode,
   EncryptableItem,
   Encrypted_Inputs,
+  EncryptSetStateFn,
   EncryptStep,
   FheTypes,
-  Permission,
   UnsealedItem,
   VerifyResult,
 } from "../../types";
@@ -168,11 +168,11 @@ async function mockZkVerifySign(
 }
 
 export async function mockEncrypt<T extends any[]>(
-  setState: (state: EncryptStep) => void,
   item: [...T],
   securityZone = 0,
+  setStateCallback: EncryptSetStateFn,
 ): Promise<[...Encrypted_Inputs<T>]> {
-  setState(EncryptStep.Extract);
+  setStateCallback(EncryptStep.Extract);
 
   const state = _sdkStore.getState();
 
@@ -202,18 +202,18 @@ export async function mockEncrypt<T extends any[]>(
 
   const encryptableItems = encryptExtract(item);
 
-  setState(EncryptStep.Pack);
+  setStateCallback(EncryptStep.Pack);
 
   // Sleep to avoid rate limiting
   await sleep(100);
 
-  setState(EncryptStep.Prove);
+  setStateCallback(EncryptStep.Prove);
 
   await sleep(500);
 
-  setState(EncryptStep.Verify);
+  setStateCallback(EncryptStep.Verify);
 
-  await sleep(2000);
+  await sleep(500);
 
   const signedResults = await mockZkVerifySign(
     state.signer,
@@ -232,7 +232,7 @@ export async function mockEncrypt<T extends any[]>(
     }),
   );
 
-  setState(EncryptStep.Replace);
+  setStateCallback(EncryptStep.Replace);
 
   const [preparedInputItems, remainingInItems] = encryptReplace(item, inItems);
 
@@ -242,7 +242,7 @@ export async function mockEncrypt<T extends any[]>(
       message: "Some encrypted inputs remaining after replacement",
     });
 
-  setState(EncryptStep.Done);
+  setStateCallback(EncryptStep.Done);
 
   return preparedInputItems;
 }

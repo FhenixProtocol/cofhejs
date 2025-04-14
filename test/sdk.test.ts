@@ -25,6 +25,7 @@ import {
   CoFheInUint8,
   FheTypes,
   EncryptStep,
+  CofhejsErrorCode,
 } from "../src/types";
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
@@ -107,7 +108,7 @@ describe("Sdk Tests", () => {
         // signer: bobSigner,
         environment: "LOCAL",
       } as unknown as InitializationParams),
-      "initialize :: missing provider - Please provide an AbstractProvider interface",
+      CofhejsErrorCode.MissingProviderParam,
     );
 
     expectResultError(
@@ -118,7 +119,7 @@ describe("Sdk Tests", () => {
         securityZones: [],
         environment: "LOCAL",
       } as unknown as InitializationParams),
-      "initialize :: a list of securityZones was provided, but it is empty",
+      CofhejsErrorCode.EmptySecurityZonesParam,
     );
   });
 
@@ -209,11 +210,19 @@ describe("Sdk Tests", () => {
     };
 
     try {
-      const nestedEncryptResult = await cofhejs.encrypt(logState, [
-        { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
-        ["hello", 20n, Encryptable.address(contractAddress)],
-        Encryptable.uint8("10"),
-      ] as const);
+      const nestedEncryptResult = await cofhejs.encrypt(
+        [
+          {
+            a: Encryptable.bool(false),
+            b: Encryptable.uint64(10n),
+            c: "hello",
+          },
+          ["hello", 20n, Encryptable.address(contractAddress)],
+          Encryptable.uint8("10"),
+        ] as const,
+        0,
+        logState,
+      );
 
       const nestedEncrypt = expectResultSuccess(nestedEncryptResult);
 
@@ -300,7 +309,7 @@ describe("Sdk Tests", () => {
         type: "self",
         issuer: bobAddress,
       }),
-      "createPermit :: cofhejs not initialized. Use `cofhejs.initialize(...)`.",
+      CofhejsErrorCode.NotInitialized,
     );
 
     await initSdkWithBob();

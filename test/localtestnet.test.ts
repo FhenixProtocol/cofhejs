@@ -26,7 +26,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe("Local Testnet (Anvil) Tests", () => {
+describe("Local Testnet (Hardhat Node) Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -41,8 +41,8 @@ describe("Local Testnet (Anvil) Tests", () => {
   const contractAddress2 = "0xB170fC5BAC4a87A63fC84653Ee7e0db65CC62f96";
   const counterProjectId = "COUNTER";
   const uniswapProjectId = "UNISWAP";
-  const anvilRpcUrl = "http://127.0.0.1:8545";
-  const anvilChainId = 31337n;
+  const hardhatRpcUrl = "http://127.0.0.1:8545";
+  const hardhatChainId = 31337n;
 
   const initSdkWithBob = async () => {
     return cofhejs.initialize({
@@ -64,8 +64,8 @@ describe("Local Testnet (Anvil) Tests", () => {
     bobProvider = new MockProvider(
       bobPublicKey,
       BobWallet,
-      anvilRpcUrl,
-      anvilChainId,
+      hardhatRpcUrl,
+      hardhatChainId,
     );
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
@@ -74,8 +74,8 @@ describe("Local Testnet (Anvil) Tests", () => {
     adaProvider = new MockProvider(
       adaPublicKey,
       AdaWallet,
-      anvilRpcUrl,
-      anvilChainId,
+      hardhatRpcUrl,
+      hardhatChainId,
     );
     adaSigner = await adaProvider.getSigner();
     adaAddress = await adaSigner.getAddress();
@@ -139,11 +139,14 @@ describe("Local Testnet (Anvil) Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
-    const nestedEncrypt = await cofhejs.encrypt(logState, [
-      { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
-      ["hello", 20n, Encryptable.address(contractAddress)],
-      Encryptable.uint8("10"),
-    ] as const);
+    const nestedEncrypt = await cofhejs.encrypt(
+      [
+        { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
+        ["hello", 20n, Encryptable.address(contractAddress)],
+        Encryptable.uint8("10"),
+      ] as const,
+      logState,
+    );
 
     expect(nestedEncrypt.error).toEqual(null);
     expect(nestedEncrypt.data).to.not.equal(undefined);
@@ -171,7 +174,7 @@ describe("Local Testnet (Anvil) Tests", () => {
     };
 
     const inEncryptUint32 = expectResultSuccess(
-      await cofhejs.encrypt(logState, [Encryptable.uint32(25n)] as const),
+      await cofhejs.encrypt([Encryptable.uint32(25n)] as const, logState),
     )[0];
 
     console.log("inEncryptUint32", inEncryptUint32);

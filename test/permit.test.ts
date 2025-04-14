@@ -9,7 +9,6 @@ import { beforeAll, describe, expect, expectTypeOf, it } from "vitest";
 import { AdaWallet, BobWallet, MockProvider, MockSigner } from "./utils";
 import { afterEach } from "vitest";
 import { getAddress, ZeroAddress } from "ethers";
-import { FheTypes } from "../src/types";
 
 import { createTfhePublicKey, Permit, SealingKey } from "../src/node";
 
