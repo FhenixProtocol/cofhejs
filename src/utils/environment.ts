@@ -43,22 +43,22 @@ export function applyEnvironmentDefaults<
     case "TESTNET":
       result.coFheUrl =
         params.coFheUrl ||
-        "http://cofhe.fhenix.zone:8448";
+        "https://testnet-cofhe.fhenix.zone";
       result.verifierUrl =
-        params.verifierUrl || "http://cofhe-vrf.fhenix.zone:3001";
+        params.verifierUrl || "https://testnet-cofhe-vrf.fhenix.zone";
       result.thresholdNetworkUrl =
         params.thresholdNetworkUrl ||
-        "http://cofhe-tn.fhenix.zone:3000";
+        "https://testnet-cofhe-tn.fhenix.zone";
       break;
     case "MAINNET":
       result.coFheUrl =
         params.coFheUrl ||
-        "http://cofhe-sepolia-cofhe-full-lb-52f737bc5a860f4a.elb.eu-west-1.amazonaws.com";
+        "https://mainnet-cofhe.fhenix.zone";
       result.verifierUrl =
-        params.verifierUrl || "http://fullstack.tn-testnets.fhenix.zone:3001";
+        params.verifierUrl || "https://mainnet-cofhe-vrf.fhenix.zone";
       result.thresholdNetworkUrl =
         params.thresholdNetworkUrl ||
-        "http://fullstack.tn-testnets.fhenix.zone:3000";
+        "https://mainnet-cofhe-tn.fhenix.zone";
       break;
     default:
       throw new CofhejsError({
