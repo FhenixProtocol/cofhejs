@@ -13,7 +13,7 @@ import { checkIsTestnet } from "./testnet";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 // Determine if we're in a browser environment
-const isBrowser = typeof window !== "undefined" && window.indexedDB;
+const isBrowser = typeof window !== "undefined" && !!window.indexedDB;
 
 // Create appropriate storage
 const getStorage = () => {
