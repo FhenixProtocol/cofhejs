@@ -73,7 +73,17 @@ export const setPermit = (account: string, permit: Permit) => {
 export const removePermit = (account: string, hash: string) => {
   _permitStore.setState(
     produce<PermitsStore>((state) => {
-      state.permits[account][hash] = undefined;
+      const accountPermits = state.permits[account];
+      if (accountPermits == null) return;
+
+      accountPermits[hash] = undefined;
+
+      if (state.activePermitHash[account] === hash) {
+        const remainingHash = Object.keys(accountPermits).find(
+          (key) => accountPermits[key] != null,
+        );
+        state.activePermitHash[account] = remainingHash;
+      }
     }),
   );
 };
