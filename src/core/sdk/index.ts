@@ -156,8 +156,8 @@ export const createPermit = async (
 
   const permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
 
-  permitStore.setPermit(state.account!, permit);
-  permitStore.setActivePermitHash(state.account!, permit.getHash());
+  permitStore.setPermit(state.chainId!, state.account!, permit);
+  permitStore.setActivePermitHash(state.chainId!, state.account!, permit.getHash());
 
   return permit;
 };
@@ -220,8 +220,8 @@ export const importPermit = async (
     });
   }
 
-  permitStore.setPermit(state.account!, permit);
-  permitStore.setActivePermitHash(state.account!, permit.getHash());
+  permitStore.setPermit(state.chainId!, state.account!, permit);
+  permitStore.setActivePermitHash(state.chainId!, state.account!, permit.getHash());
 
   return permit;
 };
@@ -238,14 +238,14 @@ export const selectActivePermit = (hash: string): Permit => {
 
   _checkInitialized(state);
 
-  const permit = permitStore.getPermit(state.account, hash);
+  const permit = permitStore.getPermit(state.chainId, state.account, hash);
   if (permit == null)
     throw new CofhejsError({
       code: CofhejsErrorCode.PermitNotFound,
       message: `Permit with hash <${hash}> not found`,
     });
 
-  permitStore.setActivePermitHash(state.account!, permit.getHash());
+  permitStore.setActivePermitHash(state.chainId!, state.account!, permit.getHash());
 
   return permit;
 };
@@ -263,7 +263,7 @@ export const getPermit = (hash?: string): Permit => {
   _checkInitialized(state);
 
   if (hash == null) {
-    const permit = permitStore.getActivePermit(state.account);
+    const permit = permitStore.getActivePermit(state.chainId, state.account);
     if (permit == null)
       throw new CofhejsError({
         code: CofhejsErrorCode.PermitNotFound,
@@ -273,7 +273,7 @@ export const getPermit = (hash?: string): Permit => {
     return permit;
   }
 
-  const permit = permitStore.getPermit(state.account, hash);
+  const permit = permitStore.getPermit(state.chainId, state.account, hash);
   if (permit == null)
     throw new CofhejsError({
       code: CofhejsErrorCode.PermitNotFound,
@@ -307,7 +307,7 @@ export const getAllPermits = (): Record<string, Permit> => {
 
   _checkInitialized(state);
 
-  return permitStore.getPermits(state.account);
+  return permitStore.getPermits(state.chainId, state.account);
 };
 
 // Encrypt (Steps)
@@ -453,7 +453,11 @@ export async function unseal<U extends FheTypes>(
 
   const resolvedAccount = account ?? _sdkStore.getState().account;
   const resolvedHash =
-    permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
+    permitHash ??
+    permitStore.getActivePermitHash(
+      _sdkStore.getState().chainId,
+      resolvedAccount,
+    );
 
   if (resolvedAccount == null || resolvedHash == null) {
     throw new CofhejsError({
@@ -462,7 +466,11 @@ export async function unseal<U extends FheTypes>(
     });
   }
 
-  const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
+  const permit = permitStore.getPermit(
+    _sdkStore.getState().chainId,
+    resolvedAccount,
+    resolvedHash,
+  );
   if (permit == null) {
     throw new CofhejsError({
       code: CofhejsErrorCode.PermitNotFound,
@@ -529,7 +537,11 @@ export async function decrypt<U extends FheTypes>(
 
   const resolvedAccount = account ?? _sdkStore.getState().account;
   const resolvedHash =
-    permitHash ?? permitStore.getActivePermitHash(resolvedAccount);
+    permitHash ??
+    permitStore.getActivePermitHash(
+      _sdkStore.getState().chainId,
+      resolvedAccount,
+    );
   if (resolvedAccount == null || resolvedHash == null) {
     throw new CofhejsError({
       code: CofhejsErrorCode.PermitNotFound,
@@ -537,7 +549,11 @@ export async function decrypt<U extends FheTypes>(
     });
   }
 
-  const permit = permitStore.getPermit(resolvedAccount, resolvedHash);
+  const permit = permitStore.getPermit(
+    _sdkStore.getState().chainId,
+    resolvedAccount,
+    resolvedHash,
+  );
   if (permit == null) {
     throw new CofhejsError({
       code: CofhejsErrorCode.PermitNotFound,
