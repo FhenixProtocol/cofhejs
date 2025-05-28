@@ -36,6 +36,7 @@ describe("Sdk Tests", () => {
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
   let bobAddress: string;
+  let bobChainId: string;
 
   let adaPublicKey: string;
   let adaProvider: MockProvider;
@@ -69,6 +70,7 @@ describe("Sdk Tests", () => {
   beforeAll(async () => {
     bobPublicKey = await createTfhePublicKey();
     bobProvider = new MockProvider(bobPublicKey, BobWallet, rpcUrl, 420105n);
+    bobChainId = bobProvider.chainId.toString();
     bobSigner = await bobProvider.getSigner();
     bobAddress = await bobSigner.getAddress();
 
@@ -283,8 +285,8 @@ describe("Sdk Tests", () => {
 
     // Keys store
     expect(dumped["cofhejs-keys"]["state"]).to.have.keys(["fhe", "crs"]);
-    expect(dumped["cofhejs-keys"]["state"]["fhe"]).to.have.keys(["420105"]);
-    expect(dumped["cofhejs-keys"]["state"]["crs"]).to.have.keys(["420105"]);
+    expect(dumped["cofhejs-keys"]["state"]["fhe"]).to.have.keys([bobChainId]);
+    expect(dumped["cofhejs-keys"]["state"]["crs"]).to.have.keys([bobChainId]);
 
     // Permits store
 
@@ -295,12 +297,14 @@ describe("Sdk Tests", () => {
 
     // Permits
     const bobsPermitsDumped =
-      dumped["cofhejs-permits"]["state"]["permits"][bobAddress];
+      dumped["cofhejs-permits"]["state"]["permits"][bobChainId][bobAddress];
     expect(bobsPermitsDumped).to.have.keys(permit1?.getHash() ?? "permit1Hash");
 
     // ActivePermit
     expect(
-      dumped["cofhejs-permits"]["state"]["activePermitHash"][bobAddress],
+      dumped["cofhejs-permits"]["state"]["activePermitHash"][bobChainId][
+        bobAddress
+      ],
     ).toEqual(permit1?.getHash());
   });
   it("createPermit", async () => {
@@ -323,7 +327,9 @@ describe("Sdk Tests", () => {
     // Permit established in store
 
     const storePermitSerialized =
-      permitStore.store.getState().permits[bobAddress]?.[permit.getHash()];
+      permitStore.store.getState().permits[bobChainId][bobAddress]?.[
+        permit.getHash()
+      ];
     expect(storePermitSerialized).to.not.be.null;
 
     const storePermit = Permit.deserialize(storePermitSerialized!);
@@ -332,7 +338,7 @@ describe("Sdk Tests", () => {
     // Is active permit
 
     const storeActivePermitHash =
-      permitStore.store.getState().activePermitHash[bobAddress];
+      permitStore.store.getState().activePermitHash[bobChainId][bobAddress];
     expect(storeActivePermitHash).toEqual(permit.getHash());
 
     // Creating new permit
@@ -345,7 +351,7 @@ describe("Sdk Tests", () => {
     );
 
     const storeActivePermitHash2 =
-      permitStore.store.getState().activePermitHash[bobAddress];
+      permitStore.store.getState().activePermitHash[bobChainId][bobAddress];
     expect(storeActivePermitHash2).toEqual(permit2.getHash());
   });
 
