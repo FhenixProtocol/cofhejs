@@ -33,6 +33,8 @@ const migrateLegacyStore = () => {
   if (migrated) return;
   migrated = true;
 
+  // Any is used here because we do not have types of the previous store
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const state = _permitStore.getState() as any;
 
   const firstVal = Object.values(state.permits)[0];
@@ -40,10 +42,18 @@ const migrateLegacyStore = () => {
 
   if (innerVal && typeof innerVal === "object" && "name" in innerVal) {
     // old format detected
-    const newPermits: Record<string, Record<string, Record<string, SerializedPermit | undefined>>> = {};
+    const newPermits: Record<
+      string,
+      Record<string, Record<string, SerializedPermit | undefined>>
+    > = {};
     const newActive: Record<string, Record<string, string | undefined>> = {};
 
-    for (const [account, permits] of Object.entries(state.permits as Record<string, Record<string, SerializedPermit | undefined>>)) {
+    for (const [account, permits] of Object.entries(
+      state.permits as Record<
+        string,
+        Record<string, SerializedPermit | undefined>
+      >,
+    )) {
       for (const [hash, permit] of Object.entries(permits ?? {})) {
         if (!permit) continue;
         const chainId = String(permit._signedDomain?.chainId ?? "");
@@ -53,7 +63,9 @@ const migrateLegacyStore = () => {
       }
     }
 
-    for (const [account, hash] of Object.entries(state.activePermitHash as Record<string, string | undefined>)) {
+    for (const [account, hash] of Object.entries(
+      state.activePermitHash as Record<string, string | undefined>,
+    )) {
       if (!hash) continue;
       const permit = state.permits?.[account]?.[hash];
       const chainId = permit ? String(permit._signedDomain?.chainId ?? "") : "";
@@ -74,7 +86,8 @@ export const getPermit = (
   migrateLegacyStore();
   if (chainId == null || account == null || hash == null) return;
 
-  const savedPermit = _permitStore.getState().permits[chainId]?.[account]?.[hash];
+  const savedPermit =
+    _permitStore.getState().permits[chainId]?.[account]?.[hash];
   if (savedPermit == null) return;
 
   return Permit.deserialize(savedPermit);
@@ -87,9 +100,8 @@ export const getActivePermit = (
   migrateLegacyStore();
   if (chainId == null || account == null) return;
 
-  const activePermitHash = _permitStore.getState().activePermitHash[chainId]?.[
-    account
-  ];
+  const activePermitHash =
+    _permitStore.getState().activePermitHash[chainId]?.[account];
   return getPermit(chainId, account, activePermitHash);
 };
 
@@ -115,7 +127,7 @@ export const setPermit = (chainId: string, account: string, permit: Permit) => {
   migrateLegacyStore();
   _permitStore.setState(
     produce<PermitsStore>((state) => {
-      if (state.permits[chainId] == null) state.permits[chainId] = {} as any;
+      if (state.permits[chainId] == null) state.permits[chainId] = {};
       if (state.permits[chainId][account] == null)
         state.permits[chainId][account] = {};
       state.permits[chainId][account][permit.getHash()] = permit.serialize();
@@ -131,8 +143,26 @@ export const removePermit = (
   migrateLegacyStore();
   _permitStore.setState(
     produce<PermitsStore>((state) => {
-      if (state.permits[chainId]?.[account])
-        state.permits[chainId][account][hash] = undefined;
+      if (state.permits[chainId] == null) state.permits[chainId] = {};
+      if (state.activePermitHash[chainId] == null)
+        state.activePermitHash[chainId] = {};
+
+      // Remove active permit
+
+      const accountPermits = state.permits[chainId][account];
+      if (accountPermits == null) return;
+
+      if (accountPermits[hash] == null) return;
+      accountPermits[hash] = undefined;
+
+      // Remove active permit hash (if it was the one being removed)
+
+      if (state.activePermitHash[chainId][account] === hash) {
+        const remainingHash = Object.keys(accountPermits).find(
+          (key) => accountPermits[key] != null,
+        );
+        state.activePermitHash[chainId][account] = remainingHash;
+      }
     }),
   );
 };
@@ -157,7 +187,7 @@ export const setActivePermitHash = (
   _permitStore.setState(
     produce<PermitsStore>((state) => {
       if (state.activePermitHash[chainId] == null)
-        state.activePermitHash[chainId] = {} as any;
+        state.activePermitHash[chainId] = {};
       state.activePermitHash[chainId][account] = hash;
     }),
   );
