@@ -18,6 +18,7 @@ const isBrowser = typeof window !== "undefined" && window.indexedDB;
 // Create appropriate storage
 const getStorage = () => {
   if (isBrowser) {
+    // Browser storage using IndexedDB (loaded dynamically to avoid bundler issues)
     return {
       getItem: async (name: string) => {
         const { get } = await import("idb-keyval");
