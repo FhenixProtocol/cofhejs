@@ -57,6 +57,7 @@ describe("Sdk Tests", () => {
       provider: bobProvider,
       signer: bobSigner,
       environment: "LOCAL",
+      zkvSigner: bobSigner,
     });
   };
   const initSdkWithAda = async () => {
@@ -64,6 +65,7 @@ describe("Sdk Tests", () => {
       provider: adaProvider,
       signer: adaSigner,
       environment: "LOCAL",
+      zkvSigner: adaSigner,
     });
   };
 

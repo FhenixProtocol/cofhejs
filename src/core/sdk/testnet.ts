@@ -63,15 +63,13 @@ export async function checkIsTestnet(
 }
 
 async function mockZkVerifySign(
+  zkvSigner: AbstractSigner | undefined,
   signer: AbstractSigner,
   provider: AbstractProvider,
   user: string,
   items: EncryptableItem[],
   securityZone: number,
 ): Promise<VerifyResult[]> {
-  // Create ethers wallet with mockZkVerifierSignerPkey
-  const zkVerifierSigner = new ethers.Wallet(MockZkVerifierSignerPkey);
-
   // Create array to store results
   const results = [];
 
@@ -121,7 +119,7 @@ async function mockZkVerifySign(
     );
 
     // Call insertPackedCtHashes
-    await signer.sendTransaction({
+    await (zkvSigner ?? signer).sendTransaction({
       to: MockZkVerifierAddress,
       data: insertPackedCtHashesCallData,
     });
@@ -132,6 +130,9 @@ async function mockZkVerifySign(
       cause: err instanceof Error ? err : undefined,
     });
   }
+
+  // Create ethers wallet with mockZkVerifierSignerPkey
+  const zkVerifierSigner = new ethers.Wallet(MockZkVerifierSignerPkey);
 
   // Sign the items
   try {
@@ -216,6 +217,7 @@ export async function mockEncrypt<T extends any[]>(
   await sleep(500);
 
   const signedResults = await mockZkVerifySign(
+    state.zkvSigner,
     state.signer,
     state.provider,
     state.account,

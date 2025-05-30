@@ -26,7 +26,7 @@ import {
 import { cofhejs, createTfhePublicKey, Permit, SealingKey } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe("Local Testnet (Hardhat Node) Tests", () => {
+describe("Mocks (Hardhat Node) Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -49,6 +49,7 @@ describe("Local Testnet (Hardhat Node) Tests", () => {
       provider: bobProvider,
       signer: bobSigner,
       environment: "MOCK",
+      zkvSigner: bobSigner,
     });
   };
   const initSdkWithAda = async () => {
@@ -56,6 +57,7 @@ describe("Local Testnet (Hardhat Node) Tests", () => {
       provider: adaProvider,
       signer: adaSigner,
       environment: "MOCK",
+      zkvSigner: adaSigner,
     });
   };
 
