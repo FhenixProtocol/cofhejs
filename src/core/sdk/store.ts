@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
@@ -12,13 +13,13 @@ import { checkIsTestnet } from "./testnet";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 // Determine if we're in a browser environment
-const isBrowser = typeof window !== 'undefined' && window.indexedDB;
+const isBrowser = typeof window !== "undefined" && window.indexedDB;
 
 // Create appropriate storage
 const getStorage = () => {
   if (isBrowser) {
     // Browser storage using IndexedDB
-    const { get, set, del } = require('idb-keyval');
+    const { get, set, del } = require("idb-keyval");
     return {
       getItem: async (name: string) => {
         return (await get(name)) || null;
@@ -35,19 +36,22 @@ const getStorage = () => {
     // Use dynamic imports to avoid bundling Node.js modules in browser builds
     try {
       // This code will only run in Node.js environments
-      const fs = require('fs');
-      const path = require('path');
-      const storageDir = path.join(process.env.HOME || process.env.USERPROFILE || '.', '.cofhejs');
-      
+      const fs = require("fs");
+      const path = require("path");
+      const storageDir = path.join(
+        process.env.HOME || process.env.USERPROFILE || ".",
+        ".cofhejs",
+      );
+
       if (!fs.existsSync(storageDir)) {
         fs.mkdirSync(storageDir, { recursive: true });
       }
-      
+
       return {
         getItem: async (name: string) => {
           const filePath = path.join(storageDir, `${name}.json`);
           if (fs.existsSync(filePath)) {
-            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+            return JSON.parse(fs.readFileSync(filePath, "utf8"));
           }
           return null;
         },
@@ -64,7 +68,9 @@ const getStorage = () => {
       };
     } catch (e) {
       // Fallback for environments where fs/path are not available
-      console.warn('Node.js filesystem modules not available, using memory storage');
+      console.warn(
+        "Node.js filesystem modules not available, using memory storage",
+      );
       const memoryStorage: Record<string, string> = {};
       return {
         getItem: async (name: string) => {
@@ -119,7 +125,7 @@ export const _keysStore = createStore<KeysStore>()(
       fhe: {},
       crs: {},
     }),
-    { 
+    {
       name: "cofhejs-keys",
       storage: createJSONStorage(() => getStorage()),
     },
@@ -139,6 +145,10 @@ export type SdkStore = SdkStoreProviderInitialization &
     coFheUrl: string | undefined;
     verifierUrl: string | undefined;
     thresholdNetworkUrl: string | undefined;
+
+    // Not required, used in mocks to send the insertPackedCtHashes tx
+    // If not provided, the connected signer is used instead (will require wallet signature in frontend if on mocks)
+    zkvSigner: AbstractSigner;
   };
 
 export const _sdkStore = createStore<SdkStore>(
@@ -159,6 +169,8 @@ export const _sdkStore = createStore<SdkStore>(
       signerInitialized: false,
       signer: undefined as never,
       account: undefined as never,
+
+      zkvSigner: undefined as never,
     }) as SdkStore,
 );
 
@@ -210,6 +222,7 @@ export const _store_initialize = async (params: InitializationParams) => {
     coFheUrl,
     verifierUrl,
     thresholdNetworkUrl,
+    zkvSigner,
   } = params;
 
   _sdkStore.setState({
@@ -218,6 +231,7 @@ export const _store_initialize = async (params: InitializationParams) => {
     coFheUrl,
     verifierUrl,
     thresholdNetworkUrl,
+    zkvSigner,
   });
 
   // PROVIDER
