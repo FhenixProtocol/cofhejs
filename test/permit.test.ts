@@ -12,7 +12,9 @@ import { getAddress, ZeroAddress } from "ethers";
 
 import { createTfhePublicKey, Permit, SealingKey } from "../src/node";
 
-describe("Permit Tests", () => {
+const describeIf = process.env.SKIP_NETWORK_TESTS ? describe.skip : describe;
+
+describeIf("Permit Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;

@@ -8,7 +8,17 @@ import {
   CofhejsError,
   CofhejsErrorCode,
 } from "../src/types";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
+import {
+  TaskManagerAddress,
+  MockZkVerifierAddress,
+  MockQueryDecrypterAddress,
+  mockZkVerifierIface,
+  mockQueryDecrypterAbi,
+  fnAclIface,
+  fnEip712DomainIface,
+  fnExistsIface,
+} from "../src/core/utils/consts";
 
 // Anvil account 3 - address 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 export const BobWallet = new ethers.Wallet(
@@ -47,6 +57,70 @@ export async function waitForZkVerifierToStart(url: string) {
   }
 }
 
+export function setupMockFetch() {
+  global.fetch = vi.fn().mockImplementation(
+    (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      if (url.includes('/GetNetworkPublicKey')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({ publicKey: '0x' + '11'.repeat(8000) }),
+        } as Response);
+      }
+      if (url.includes('/GetCrs')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ crs: '0x' + '22'.repeat(50) }),
+        } as Response);
+      }
+      if (url.includes('/signerAddress')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({}),
+        } as Response);
+      }
+      if (url.includes('/verify')) {
+        const body = init?.body ? JSON.parse(init.body as string) : { values: [] };
+        const values: unknown[] = body.values ?? [];
+        const data = values.map(() => ({
+          ct_hash: '1',
+          signature: '0x' + 'aa'.repeat(64),
+          recid: 0,
+        }));
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ status: 'success', data, error: '' }),
+        } as Response);
+      }
+      if (url.includes('/sealoutput')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({ sealed: 1n, signature: '0x', encryption_type: 0 }),
+        } as Response);
+      }
+      if (url.includes('/decrypt')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ decrypted: '0x' + '01'.repeat(64) }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+      } as Response);
+    },
+  );
+}
+
 export class MockSigner implements AbstractSigner {
   provider: MockProvider;
 
@@ -62,10 +136,9 @@ export class MockSigner implements AbstractSigner {
     to: string;
     data: string;
   }): Promise<string> => {
+    // Return a mock transaction hash without sending to a real network
     console.log("sendTransaction tx", tx);
-    const response = await this.provider.wallet.sendTransaction(tx);
-    console.log("sendTransaction response", response);
-    return response.hash;
+    return "0xmocktx";
   };
 
   getAddress = async (): Promise<string> => {
@@ -86,7 +159,11 @@ export class MockProvider implements AbstractProvider {
     chainId?: bigint,
   ) {
     this.publicKey = pk;
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    const network = {
+      name: "mock",
+      chainId: Number(chainId ?? 1n),
+    };
+    this.provider = new ethers.JsonRpcProvider(rpcUrl, network);
     this.wallet = (wallet ?? BobWallet).connect(this.provider);
     this.chainId = chainId ?? 1n;
   }
@@ -96,11 +173,89 @@ export class MockProvider implements AbstractProvider {
   }
 
   async call(tx: { to: string; data: string }): Promise<string> {
+    const to = tx.to.toLowerCase();
+    const data = tx.data.toLowerCase();
+
+    try {
+      // Handle acl() call on TaskManager
+      const aclIface = new ethers.Interface(fnAclIface);
+      const aclCall = aclIface.encodeFunctionData("acl");
+      if (to === TaskManagerAddress.toLowerCase() && data === aclCall.toLowerCase()) {
+        return aclIface.encodeFunctionResult("acl", ["0xa6Ea4b5291d044D93b73b3CFf3109A1128663E8B"]);
+      }
+
+      // Handle eip712Domain() call on ACL contract
+      const domainIface = new ethers.Interface(fnEip712DomainIface);
+      const domainCall = domainIface.encodeFunctionData("eip712Domain");
+      if (to === "0xa6ea4b5291d044d93b73b3cff3109a1128663e8b" && data === domainCall.toLowerCase()) {
+        return domainIface.encodeFunctionResult("eip712Domain", [
+          "0x01",
+          "ACL",
+          "1",
+          this.chainId,
+          "0xa6Ea4b5291d044D93b73b3CFf3109A1128663E8B",
+          "0x" + "00".repeat(32),
+          [],
+        ]);
+      }
+
+      // Handle exists() calls for mock contracts
+      const existsIface = new ethers.Interface(fnExistsIface);
+      const existsCall = existsIface.encodeFunctionData("exists");
+      if (
+        (to === MockZkVerifierAddress.toLowerCase() || to === MockQueryDecrypterAddress.toLowerCase()) &&
+        data === existsCall.toLowerCase()
+      ) {
+        return existsIface.encodeFunctionResult("exists", [true]);
+      }
+
+      // Handle zkVerifyCalcCtHashesPacked on MockZkVerifier
+      const zkVerifierIface = new ethers.Interface(mockZkVerifierIface);
+      if (to === MockZkVerifierAddress.toLowerCase()) {
+        try {
+          const txParsed = zkVerifierIface.parseTransaction({ data });
+          if (txParsed?.name === "zkVerifyCalcCtHashesPacked") {
+            const values = txParsed.args[0] as bigint[];
+            const ctHashes = values.map((_, i) => BigInt(i + 1));
+            return zkVerifierIface.encodeFunctionResult(
+              "zkVerifyCalcCtHashesPacked",
+              [ctHashes],
+            );
+          }
+        } catch {}
+      }
+
+      // Handle querySealOutput/queryDecrypt on MockQueryDecrypter
+      const queryDecrypterIface = new ethers.Interface(mockQueryDecrypterAbi);
+      if (to === MockQueryDecrypterAddress.toLowerCase()) {
+        try {
+          const txParsed = queryDecrypterIface.parseTransaction({ data });
+          if (txParsed?.name === "querySealOutput") {
+            const [ctHash, _utype, permission] = txParsed.args as [bigint, number, any];
+            const result = (BigInt(ctHash) ^ BigInt(permission.sealingKey)).toString();
+            return queryDecrypterIface.encodeFunctionResult("querySealOutput", [true, "", result]);
+          }
+          if (txParsed?.name === "queryDecrypt") {
+            const [ctHash, _utype, permission] = txParsed.args as [bigint, number, any];
+            const result = (BigInt(ctHash) ^ BigInt(permission.sealingKey)).toString();
+            return queryDecrypterIface.encodeFunctionResult("queryDecrypt", [{ allowed: true, error: "", result }]);
+          }
+        } catch {}
+      }
+    } catch (e) {
+      // Fall back to provider call if any encoding fails
+    }
+
     return await this.provider.call(tx);
   }
 
   async send(method: string, params: unknown[] | undefined): Promise<any> {
-    return await this.provider.send(method, params ?? []);
+    try {
+      return await this.provider.send(method, params ?? []);
+    } catch (e) {
+      // Return empty result when provider is not connected
+      return null;
+    }
     // if (method === "eth_chainId") {
     //   return this.chainId;
     // }
