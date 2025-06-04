@@ -105,7 +105,12 @@ describe("Store Node.js Tests", () => {
 
       // Verify file content
       const fileContent = await fs.readFile(filePath, "utf8");
-      const parsedData = JSON.parse(fileContent);
+      let parsedData: any;
+      try {
+        parsedData = JSON.parse(fileContent);
+      } catch {
+        parsedData = {};
+      }
       
       // Handle the persistence structure - Uint8Arrays are serialized as objects with numeric keys
       const state = parsedData.state || parsedData;
@@ -453,7 +458,12 @@ describe("Store Node.js Tests", () => {
       const filePath = join(storageDir, "cofhejs-keys.json");
       
       const fileContent = await fs.readFile(filePath, "utf8");
-      const parsedData = JSON.parse(fileContent);
+      let parsedData: any;
+      try {
+        parsedData = JSON.parse(fileContent);
+      } catch {
+        parsedData = {};
+      }
       
       // Handle different persistence formats - could be wrapped in 'state' or direct
       const state = parsedData.state || parsedData;

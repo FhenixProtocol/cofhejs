@@ -17,6 +17,7 @@ import {
   expectResultSuccess,
   MockProvider,
   MockSigner,
+  setupMockFetch,
 } from "./utils";
 import { afterEach } from "vitest";
 import {
@@ -30,7 +31,9 @@ import {
 import { cofhejs, createTfhePublicKey, Permit } from "../src/node";
 import { _permitStore, permitStore } from "../src/core/permit/store";
 
-describe("Arbitrum Sepolia Tests", () => {
+const describeIf = process.env.SKIP_NETWORK_TESTS ? describe.skip : describe;
+
+describeIf("Arbitrum Sepolia Tests", () => {
   let bobPublicKey: string;
   let bobProvider: MockProvider;
   let bobSigner: MockSigner;
@@ -62,6 +65,7 @@ describe("Arbitrum Sepolia Tests", () => {
   };
 
   beforeAll(async () => {
+    setupMockFetch();
     bobPublicKey = await createTfhePublicKey();
     bobProvider = new MockProvider(
       bobPublicKey,
