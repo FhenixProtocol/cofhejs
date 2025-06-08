@@ -21,6 +21,9 @@ import {
   CofhejsError,
   CofhejsErrorCode,
   wrapFunction,
+  Result,
+  ResultErr,
+  ResultOk,
 } from "../../types";
 import { mockDecrypt, mockSealOutput } from "./testnet";
 import { bytesToBigInt } from "../utils";
@@ -284,6 +287,27 @@ export const getPermit = (hash?: string): Permit => {
 };
 
 export const getPermit_asResult = wrapFunction(getPermit);
+
+export const removePermit = (hash: string, force?: boolean): string => {
+  const state = _sdkStore.getState();
+
+  if (hash == null) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.PermitNotFound,
+      message: `No permit hash provided`,
+    });
+  }
+
+  try { 
+    permitStore.removePermit(state.chainId!, state.account!, hash, force);
+  } catch (e) {
+    throw new CofhejsError({
+      code: CofhejsErrorCode.CannotRemoveLastPermit,
+      message: (e as Error).message,
+    });
+  }
+  return hash;
+};
 
 /**
  * Retrieves a stored permission based on the permit's hash.

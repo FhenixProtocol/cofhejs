@@ -10,6 +10,7 @@ import {
   getPermit,
   importPermit,
   initializeCore,
+  removePermit,
   selectActivePermit,
   unseal,
   decrypt,
@@ -214,6 +215,7 @@ export const cofhejs = {
   initializeWithEthers: wrapFunctionAsync(initializeWithEthers),
 
   createPermit: wrapFunctionAsync(createPermit),
+  removePermit: wrapFunction(removePermit),
   importPermit: wrapFunctionAsync(importPermit),
   selectActivePermit: wrapFunction(selectActivePermit),
   getPermit: wrapFunction(getPermit),
@@ -226,4 +228,5 @@ export const cofhejs = {
 
   unseal: wrapFunctionAsync(unseal),
   decrypt: wrapFunctionAsync(decrypt),
+
 };
