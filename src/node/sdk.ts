@@ -13,6 +13,7 @@ import {
   selectActivePermit,
   unseal,
   decrypt,
+  permitEvents,
 } from "../core/sdk";
 import { Permit } from "../core/permit";
 import { _sdkStore } from "../core/sdk/store";
@@ -209,6 +210,7 @@ async function encrypt<T extends any[]>(
 
 export const cofhejs = {
   store: _sdkStore,
+  events: permitEvents,
   initialize: wrapFunctionAsync(initialize),
   initializeWithViem: wrapFunctionAsync(initializeWithViem),
   initializeWithEthers: wrapFunctionAsync(initializeWithEthers),

@@ -131,3 +131,25 @@ export type Permission = Expand<
 
 // Utils
 export type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+
+/**
+ * Event data emitted when permit creation is requested in browser
+ */
+export interface PermitRequestEvent {
+  type: "self" | "sharing" | "recipient";
+  issuer: string;
+  recipient?: string;
+  expiration: number;
+  name?: string;
+}
+
+/**
+ * Extended PermitOptions with skipPrompt option
+ */
+export type CreatePermitOptions = PermitOptions & {
+  /**
+   * Skip the browser prompt event and create permit directly
+   * Defaults to false
+   */
+  skipPrompt?: boolean;
+};

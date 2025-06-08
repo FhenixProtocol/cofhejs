@@ -12,6 +12,8 @@ import {
   Encrypted_Inputs,
   isEncryptableItem,
   PermitOptions,
+  CreatePermitOptions,
+  PermitRequestEvent,
   PermitInterface,
   Permission,
   InitializationParams,
@@ -132,28 +134,94 @@ const _checkInitialized = (
 // Permit
 
 /**
+ * Simple event emitter for permit requests
+ */
+class SimpleEventEmitter {
+  public listeners: { [key: string]: Function[] } = {};
+
+  on(event: string, listener: Function) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener);
+  }
+
+  off(event: string, listener: Function) {
+    if (this.listeners[event]) {
+      const index = this.listeners[event].indexOf(listener);
+      if (index > -1) {
+        this.listeners[event].splice(index, 1);
+      }
+    }
+  }
+
+  emit(event: string, data: any) {
+    if (this.listeners[event]) {
+      this.listeners[event].forEach(listener => {
+        try {
+          listener(data);
+        } catch (error) {
+          console.error('Error in event listener:', error);
+        }
+      });
+    }
+  }
+}
+
+/**
+ * Global permit event emitter instance
+ */
+export const permitEvents = new SimpleEventEmitter();
+
+/**
+ * Checks if the current environment is a browser
+ */
+const isBrowserEnvironment = (): boolean => {
+  return typeof window !== 'undefined' && typeof window.document !== 'undefined';
+};
+
+/**
  * Creates a new permit with options, prompts user for signature.
  * Handles all `permit.type`s, and prompts for the correct signature type.
  * The created Permit will be inserted into the store and marked as the active permit.
+ * In browser environment, emits "PermitRequest" event and returns early unless skipPrompt is true.
  * NOTE: This is a wrapper around `Permit.create` and `Permit.sign`
  *
- * @param {PermitOptions} options - Partial Permit fields to create the Permit with, if no options provided will be filled with the defaults:
- * { type: "self", issuer: initializedUserAddress }
- * @returns {Result<Permit>} - Newly created Permit as a Result object
+ * @param {CreatePermitOptions} options - Partial Permit fields to create the Permit with, plus skipPrompt option.
+ * If no options provided will be filled with the defaults: { type: "self", issuer: initializedUserAddress }
+ * @returns {Promise<Permit | undefined>} - Newly created Permit, or undefined if event was emitted
  */
 export const createPermit = async (
-  options?: PermitOptions,
-): Promise<Permit> => {
+  options?: CreatePermitOptions,
+): Promise<Permit | undefined> => {
   const state = _sdkStore.getState();
 
   _checkInitialized(state);
 
+  const { skipPrompt, ...permitOptions } = options || {};
+
   const optionsWithDefaults: PermitOptions = {
     type: "self",
     issuer: state.account,
-    ...options,
+    ...permitOptions,
   };
 
+  // Browser prompt logic
+  if (isBrowserEnvironment() && !skipPrompt) {
+    const permitInfo: PermitRequestEvent = {
+      type: optionsWithDefaults.type,
+      issuer: optionsWithDefaults.issuer!,
+      recipient: 'recipient' in optionsWithDefaults ? optionsWithDefaults.recipient : undefined,
+      expiration: optionsWithDefaults.expiration || 1000000000000,
+      name: optionsWithDefaults.name,
+    };
+
+    // Emit event and return early
+    permitEvents.emit('PermitRequest', permitInfo);
+    return undefined;
+  }
+
+  // Actually create the permit
   const permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
 
   permitStore.setPermit(state.chainId!, state.account!, permit);
