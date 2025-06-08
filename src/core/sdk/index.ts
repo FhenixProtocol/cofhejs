@@ -288,6 +288,15 @@ export const getPermit = (hash?: string): Permit => {
 
 export const getPermit_asResult = wrapFunction(getPermit);
 
+/**
+ * Removes a permit from the store based on its hash.
+ * If removing the active permit and other permits exist, automatically sets a new active permit.
+ * If removing the last permit, requires the `force` flag to be true, otherwise throws an error.
+ * 
+ * @param {string} hash - The `Permit.getHash` of the permit to remove.
+ * @param {boolean} force - Optional flag to force removal of the last permit. Defaults to false.
+ * @returns {string} - The hash of the removed permit.
+ */
 export const removePermit = (hash: string, force?: boolean): string => {
   const state = _sdkStore.getState();
 
