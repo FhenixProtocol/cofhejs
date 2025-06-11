@@ -88,24 +88,34 @@ export const initialize = async (
 async function initializeWithViem(
   params: ViemInitializerParams,
 ): Promise<Permit | undefined> {
-  const { provider, signer } = await getViemAbstractProviders(params);
+  const { provider, signer, zkvSigner } =
+    await getViemAbstractProviders(params);
 
   return initialize({
     provider,
     signer,
     ...params,
+    mockConfig: {
+      decryptDelay: params.mockConfig?.decryptDelay ?? 0,
+      zkvSigner,
+    },
   });
 }
 
 async function initializeWithEthers(
   params: EthersInitializerParams,
 ): Promise<Permit | undefined> {
-  const { provider, signer } = await getEthersAbstractProviders(params);
+  const { provider, signer, zkvSigner } =
+    await getEthersAbstractProviders(params);
 
   return initialize({
     provider,
     signer,
     ...params,
+    mockConfig: {
+      decryptDelay: params.mockConfig?.decryptDelay ?? 0,
+      zkvSigner,
+    },
   });
 }
 

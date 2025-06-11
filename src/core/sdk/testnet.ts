@@ -63,13 +63,19 @@ export async function checkIsTestnet(
 }
 
 async function mockZkVerifySign(
-  zkvSigner: AbstractSigner | undefined,
+  mockConfig: {
+    decryptDelay: number;
+    zkvSigner: AbstractSigner | undefined;
+  },
   signer: AbstractSigner,
   provider: AbstractProvider,
   user: string,
   items: EncryptableItem[],
   securityZone: number,
 ): Promise<VerifyResult[]> {
+  // Delay before decrypting the output
+  await sleep(mockConfig.decryptDelay);
+
   // Create array to store results
   const results = [];
 
@@ -119,7 +125,7 @@ async function mockZkVerifySign(
     );
 
     // Call insertPackedCtHashes
-    await (zkvSigner ?? signer).sendTransaction({
+    await (mockConfig.zkvSigner ?? signer).sendTransaction({
       to: MockZkVerifierAddress,
       data: insertPackedCtHashesCallData,
     });
@@ -217,7 +223,7 @@ export async function mockEncrypt<T extends any[]>(
   await sleep(500);
 
   const signedResults = await mockZkVerifySign(
-    state.zkvSigner,
+    state.mockConfig,
     state.signer,
     state.provider,
     state.account,
