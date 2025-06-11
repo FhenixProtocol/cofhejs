@@ -13,7 +13,7 @@ import {
   MockSigner,
 } from "./utils";
 import { afterEach } from "vitest";
-import { ethers } from "ethers";
+import { ethers, getAddress, hexlify } from "ethers";
 import {
   Encryptable,
   CoFheInUint64,
@@ -49,7 +49,10 @@ describe("Mocks (Hardhat Node) Tests", () => {
       provider: bobProvider,
       signer: bobSigner,
       environment: "MOCK",
-      zkvSigner: bobSigner,
+      mockConfig: {
+        decryptDelay: 0,
+        zkvSigner: bobSigner,
+      },
     });
   };
   const initSdkWithAda = async () => {
@@ -57,7 +60,10 @@ describe("Mocks (Hardhat Node) Tests", () => {
       provider: adaProvider,
       signer: adaSigner,
       environment: "MOCK",
-      zkvSigner: adaSigner,
+      mockConfig: {
+        decryptDelay: 0,
+        zkvSigner: adaSigner,
+      },
     });
   };
 
@@ -293,7 +299,8 @@ describe("Mocks (Hardhat Node) Tests", () => {
     const uintValue = 937387n;
     const uintSealed = SealingKey.seal(uintValue, permit.sealingPair.publicKey);
     const uintCleartext = permit.unseal(uintSealed);
-    expect(uintCleartext).toEqual(uintValue);
+    const uintCleartextHex = `0x${uintCleartext.toString(16)}`;
+    expect(uintCleartextHex).toEqual(`0x${uintValue.toString(16)}`);
 
     // Address
     const addressValue = contractAddress;
@@ -302,6 +309,9 @@ describe("Mocks (Hardhat Node) Tests", () => {
       permit.sealingPair.publicKey,
     );
     const addressCleartext = permit.unseal(addressSealed);
-    expect(addressCleartext).toEqual(addressValue);
+    const addressCleartextHex = getAddress(
+      `0x${addressCleartext.toString(16)}`,
+    );
+    expect(addressCleartextHex).toEqual(addressValue);
   });
 });

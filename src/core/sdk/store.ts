@@ -157,9 +157,13 @@ export type SdkStore = SdkStoreProviderInitialization &
     verifierUrl: string | undefined;
     thresholdNetworkUrl: string | undefined;
 
-    // Not required, used in mocks to send the insertPackedCtHashes tx
-    // If not provided, the connected signer is used instead (will require wallet signature in frontend if on mocks)
-    zkvSigner: AbstractSigner;
+    mockConfig: {
+      // Delay in milliseconds to wait before decrypting the output
+      decryptDelay: number;
+      // Not required, used in mocks to send the insertPackedCtHashes tx
+      // If not provided, the connected signer is used instead (will require wallet signature in frontend if on mocks)
+      zkvSigner: AbstractSigner | undefined;
+    };
   };
 
 export const _sdkStore = createStore<SdkStore>(
@@ -181,7 +185,10 @@ export const _sdkStore = createStore<SdkStore>(
       signer: undefined as never,
       account: undefined as never,
 
-      zkvSigner: undefined as never,
+      mockConfig: {
+        decryptDelay: 0,
+        zkvSigner: undefined,
+      },
     }) as SdkStore,
 );
 
@@ -237,7 +244,7 @@ export const _store_initialize = async (params: InitializationParams) => {
     coFheUrl,
     verifierUrl,
     thresholdNetworkUrl,
-    zkvSigner,
+    mockConfig,
   } = params;
 
   _sdkStore.setState({
@@ -246,7 +253,10 @@ export const _store_initialize = async (params: InitializationParams) => {
     coFheUrl,
     verifierUrl,
     thresholdNetworkUrl,
-    zkvSigner,
+    mockConfig: {
+      decryptDelay: mockConfig?.decryptDelay ?? 0,
+      zkvSigner: mockConfig?.zkvSigner,
+    },
   });
 
   // PROVIDER

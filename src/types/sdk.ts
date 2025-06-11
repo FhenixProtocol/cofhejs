@@ -27,5 +27,8 @@ export type InitializationParams = {
   thresholdNetworkUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;
-  zkvSigner?: AbstractSigner;
+  mockConfig?: {
+    decryptDelay?: number;
+    zkvSigner?: AbstractSigner;
+  };
 };
