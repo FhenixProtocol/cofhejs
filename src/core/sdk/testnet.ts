@@ -8,6 +8,7 @@ import {
   CoFheInItem,
   CofhejsError,
   CofhejsErrorCode,
+  CofhejsMocksConfig,
   EncryptableItem,
   Encrypted_Inputs,
   EncryptSetStateFn,
@@ -63,19 +64,13 @@ export async function checkIsTestnet(
 }
 
 async function mockZkVerifySign(
-  mockConfig: {
-    decryptDelay: number;
-    zkvSigner: AbstractSigner | undefined;
-  },
+  mockConfig: CofhejsMocksConfig,
   signer: AbstractSigner,
   provider: AbstractProvider,
   user: string,
   items: EncryptableItem[],
   securityZone: number,
 ): Promise<VerifyResult[]> {
-  // Delay before decrypting the output
-  await sleep(mockConfig.decryptDelay);
-
   // Create array to store results
   const results = [];
 
@@ -261,6 +256,10 @@ export async function mockSealOutput<U extends FheTypes>(
   utype: U,
   permit: Permit,
 ): Promise<UnsealedItem<U>> {
+  // Delay before decrypting the output
+  const decryptDelay = _sdkStore.getState().mockConfig?.decryptDelay ?? 0;
+  await sleep(decryptDelay);
+
   const domainValid = await permit.checkSignedDomainValid(provider);
   if (!domainValid) {
     throw new CofhejsError({
@@ -322,6 +321,10 @@ export async function mockDecrypt<U extends FheTypes>(
   utype: U,
   permit: Permit,
 ): Promise<UnsealedItem<U>> {
+  // Delay before decrypting the output
+  const decryptDelay = _sdkStore.getState().mockConfig?.decryptDelay ?? 0;
+  await sleep(decryptDelay);
+
   const domainValid = await permit.checkSignedDomainValid(provider);
   if (!domainValid) {
     throw new CofhejsError({

@@ -18,6 +18,11 @@ export interface AbstractSigner {
 
 export type Environment = "MOCK" | "LOCAL" | "TESTNET" | "MAINNET";
 
+export type CofhejsMocksConfig = {
+  decryptDelay?: number;
+  zkvSigner?: AbstractSigner;
+};
+
 export type InitializationParams = {
   provider: AbstractProvider;
   signer?: AbstractSigner;
@@ -27,8 +32,5 @@ export type InitializationParams = {
   thresholdNetworkUrl?: string;
   tfhePublicKeySerializer: (buff: Uint8Array) => void;
   compactPkeCrsSerializer: (buff: Uint8Array) => void;
-  mockConfig?: {
-    decryptDelay?: number;
-    zkvSigner?: AbstractSigner;
-  };
+  mockConfig?: CofhejsMocksConfig;
 };
