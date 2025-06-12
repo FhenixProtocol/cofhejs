@@ -139,6 +139,7 @@ export const removePermit = (
   chainId: string,
   account: string,
   hash: string,
+  force?: boolean,
 ) => {
   migrateLegacyStore();
   _permitStore.setState(
@@ -147,22 +148,28 @@ export const removePermit = (
       if (state.activePermitHash[chainId] == null)
         state.activePermitHash[chainId] = {};
 
-      // Remove active permit
-
       const accountPermits = state.permits[chainId][account];
       if (accountPermits == null) return;
 
       if (accountPermits[hash] == null) return;
-      accountPermits[hash] = undefined;
 
-      // Remove active permit hash (if it was the one being removed)
 
       if (state.activePermitHash[chainId][account] === hash) {
-        const remainingHash = Object.keys(accountPermits).find(
-          (key) => accountPermits[key] != null,
+        // Find other permits before removing
+        const otherPermitHash = Object.keys(accountPermits).find(
+          (key) => key !== hash && accountPermits[key] != null,
         );
-        state.activePermitHash[chainId][account] = remainingHash;
+
+        if (otherPermitHash) {
+          state.activePermitHash[chainId][account] = otherPermitHash;
+        } else {
+          if (!force) {
+            throw new Error("Cannot remove the last permit without force flag");
+          }
+        }
       }
+      // Remove the permit
+      accountPermits[hash] = undefined;
     }),
   );
 };

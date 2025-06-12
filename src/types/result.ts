@@ -11,6 +11,7 @@ export enum CofhejsErrorCode {
   InvalidPermitData = "INVALID_PERMIT_DATA",
   InvalidPermitDomain = "INVALID_PERMIT_DOMAIN",
   PermitNotFound = "PERMIT_NOT_FOUND",
+  CannotRemoveLastPermit = "CANNOT_REMOVE_LAST_PERMIT",
   AccountUninitialized = "ACCOUNT_UNINITIALIZED",
   ChainIdUninitialized = "CHAIN_ID_UNINITIALIZED",
   FheKeyNotFound = "FHE_KEY_NOT_FOUND",
