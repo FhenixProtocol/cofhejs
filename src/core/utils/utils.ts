@@ -239,6 +239,8 @@ export const bigintToUint8Array = (bigNum: bigint): Uint8Array => {
 
   return byteArray;
 };
+export const ensureUint8Array = (data: Uint8Array | Object) =>
+  data instanceof Uint8Array ? data : new Uint8Array(Object.values(data));
 
 // General tooling
 
