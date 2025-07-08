@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createStore } from "zustand/vanilla";
 import { produce } from "immer";
-import { fromHexString } from "../utils/utils";
+import { ensureUint8Array, fromHexString } from "../utils/utils";
 import { PUBLIC_KEY_LENGTH_MIN } from "../utils/consts";
 import {
   AbstractProvider,
@@ -200,7 +200,8 @@ export const _store_isTestnet = () => {
 
 const _store_getFheKey = (chainId: string | undefined, securityZone = 0) => {
   if (chainId == null || securityZone == null) return undefined;
-  return _keysStore.getState().fhe[chainId]?.[securityZone];
+  const stored = _keysStore.getState().fhe[chainId]?.[securityZone];
+  return stored ? ensureUint8Array(stored) : undefined;
 };
 
 export const _store_getConnectedChainFheKey = (securityZone = 0) => {
@@ -209,12 +210,14 @@ export const _store_getConnectedChainFheKey = (securityZone = 0) => {
   if (securityZone == null) return undefined;
   if (state.chainId == null) return undefined;
 
-  return _keysStore.getState().fhe[state.chainId]?.[securityZone];
+  const stored = _keysStore.getState().fhe[state.chainId]?.[securityZone];
+  return stored ? ensureUint8Array(stored) : undefined;
 };
 
 export const _store_getCrs = (chainId: string | undefined) => {
   if (chainId == null) return undefined;
-  return _keysStore.getState().crs[chainId];
+  const stored = _keysStore.getState().crs[chainId];
+  return stored ? ensureUint8Array(stored) : undefined;
 };
 
 const getChainIdFromProvider = async (
