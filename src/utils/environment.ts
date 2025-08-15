@@ -1,16 +1,11 @@
-import { CofhejsError, CofhejsErrorCode, Environment } from "../types";
+import { CofhejsError, CofhejsErrorCode, EnvironmentParams } from "../types";
 
 /**
  * Applies environment-specific default values to initialization parameters
  */
-export function applyEnvironmentDefaults<
-  T extends {
-    environment?: Environment;
-    coFheUrl?: string;
-    verifierUrl?: string;
-    thresholdNetworkUrl?: string;
-  },
->(params: T): T {
+export function applyEnvironmentDefaults<T extends EnvironmentParams>(
+  params: T,
+): T {
   // Create a copy of the original params to avoid modifying the input
   const result = { ...params };
 
@@ -41,24 +36,18 @@ export function applyEnvironmentDefaults<
         params.thresholdNetworkUrl || "http://127.0.0.1:3000";
       break;
     case "TESTNET":
-      result.coFheUrl =
-        params.coFheUrl ||
-        "https://testnet-cofhe.fhenix.zone";
+      result.coFheUrl = params.coFheUrl || "https://testnet-cofhe.fhenix.zone";
       result.verifierUrl =
         params.verifierUrl || "https://testnet-cofhe-vrf.fhenix.zone";
       result.thresholdNetworkUrl =
-        params.thresholdNetworkUrl ||
-        "https://testnet-cofhe-tn.fhenix.zone";
+        params.thresholdNetworkUrl || "https://testnet-cofhe-tn.fhenix.zone";
       break;
     case "MAINNET":
-      result.coFheUrl =
-        params.coFheUrl ||
-        "https://mainnet-cofhe.fhenix.zone";
+      result.coFheUrl = params.coFheUrl || "https://mainnet-cofhe.fhenix.zone";
       result.verifierUrl =
         params.verifierUrl || "https://mainnet-cofhe-vrf.fhenix.zone";
       result.thresholdNetworkUrl =
-        params.thresholdNetworkUrl ||
-        "https://mainnet-cofhe-tn.fhenix.zone";
+        params.thresholdNetworkUrl || "https://mainnet-cofhe-tn.fhenix.zone";
       break;
     default:
       throw new CofhejsError({

@@ -18,6 +18,13 @@ export interface AbstractSigner {
 
 export type Environment = "MOCK" | "LOCAL" | "TESTNET" | "MAINNET";
 
+export type EnvironmentParams = {
+  environment?: Environment;
+  coFheUrl?: string;
+  verifierUrl?: string;
+  thresholdNetworkUrl?: string;
+};
+
 export type CofhejsMocksConfig = {
   decryptDelay?: number;
   zkvSigner?: AbstractSigner;
