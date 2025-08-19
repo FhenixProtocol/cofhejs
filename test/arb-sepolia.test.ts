@@ -143,6 +143,11 @@ describe("Arbitrum Sepolia Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
+    console.log(
+      "TEST TEST TEST\n\n\n\nTEST TEST TEST TEST\n\n\n\nTEST TEST TEST",
+    );
+    cofhejs.encryptOverrideAccount("0xABCDEF");
+
     const nestedEncryptResult = await cofhejs.encrypt(
       [
         { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
