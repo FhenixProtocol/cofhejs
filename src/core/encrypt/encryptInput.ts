@@ -55,9 +55,17 @@ export class EncryptInputsBuilder<T extends any[]> {
     return this;
   }
 
+  getSender(): string {
+    return this.sender;
+  }
+
   setSecurityZone(securityZone: number): EncryptInputsBuilder<T> {
     this.securityZone = securityZone;
     return this;
+  }
+
+  getSecurityZone(): number {
+    return this.securityZone;
   }
 
   /**
