@@ -10,18 +10,18 @@ import { CofhejsError, CofhejsErrorCode } from "../../types";
 import { ZkPackProveVerify } from "./zkPackProveVerify";
 
 export class EncryptInputsBuilder<T extends any[]> {
-  private sender?: string;
-  private chainId?: string;
+  private sender: string;
+  private chainId: string;
   private securityZone?: number;
   private stepCallback?: EncryptSetStateFn;
-  private inputItems?: [...T];
-  private zkVerifierUrl?: string;
-  private zk?: ZkPackProveVerify<any, any>;
+  private inputItems: [...T];
+  private zkVerifierUrl: string;
+  private zk: ZkPackProveVerify<any, any>;
 
   constructor(params: {
     inputs: [...T];
-    sender?: string;
-    chainId?: string;
+    sender: string;
+    chainId: string;
     zkVerifierUrl: string;
     zk: ZkPackProveVerify<any, any>;
   }) {
@@ -87,58 +87,12 @@ export class EncryptInputsBuilder<T extends any[]> {
     return this.securityZone ?? 0;
   }
 
-  private getResolvedSender() {
-    if (this.sender) return this.sender;
-
-    throw new CofhejsError({
-      code: CofhejsErrorCode.AccountUninitialized,
-      message: "No sender provided and no account initialized",
-    });
-  }
-
-  private getResolvedChainId() {
-    if (this.chainId) return this.chainId;
-
-    throw new CofhejsError({
-      code: CofhejsErrorCode.ChainIdUninitialized,
-      message: "No chainId provided and no chainId initialized",
-    });
-  }
-
-  private getResolvedInputItems() {
-    if (this.inputItems) return this.inputItems;
-
-    throw new CofhejsError({
-      code: CofhejsErrorCode.InvalidPermitData,
-      message:
-        "No inputs provided. Call .inputs() with at least one EncryptableItem.",
-    });
-  }
-
-  private getResolvedZk() {
-    if (this.zk) return this.zk;
-    throw new CofhejsError({
-      code: CofhejsErrorCode.ZkUninitialized,
-      message: "No zk provided and no zk initialized",
-    });
-  }
-
-  private getResolvedZkVerifierUrl() {
-    if (this.zkVerifierUrl) return this.zkVerifierUrl;
-    throw new CofhejsError({
-      code: CofhejsErrorCode.ZkVerifierUrlUninitialized,
-      message: "No zkVerifierUrl provided and no zkVerifierUrl initialized",
-    });
-  }
-
   private getExtractedEncryptableItems() {
-    const inputItems = this.getResolvedInputItems();
-    return encryptExtract(inputItems);
+    return encryptExtract(this.inputItems);
   }
 
   private replaceEncryptableItems(inItems: CoFheInItem[]) {
-    const inputItems = this.getResolvedInputItems();
-    const [prepared, remaining] = encryptReplace(inputItems, inItems);
+    const [prepared, remaining] = encryptReplace(this.inputItems, inItems);
     if (remaining.length === 0) return prepared;
 
     throw new CofhejsError({
@@ -148,11 +102,7 @@ export class EncryptInputsBuilder<T extends any[]> {
   }
 
   async encrypt(): Promise<[...Encrypted_Inputs<T>]> {
-    const sender = this.getResolvedSender();
-    const chainId = this.getResolvedChainId();
     const securityZone = this.getResolvedSecurityZone();
-    const zkVerifierUrl = this.getResolvedZkVerifierUrl();
-    const zk = this.getResolvedZk();
 
     this.fireCallback(EncryptStep.Extract);
 
@@ -160,27 +110,32 @@ export class EncryptInputsBuilder<T extends any[]> {
 
     this.fireCallback(EncryptStep.Pack);
 
-    const builder = zk.pack(encryptableItems);
+    const builder = this.zk.pack(encryptableItems);
 
     this.fireCallback(EncryptStep.Prove);
 
-    const proved = await zk.prove(builder, sender, securityZone, chainId);
+    const proved = await this.zk.prove(
+      builder,
+      this.sender,
+      securityZone,
+      this.chainId,
+    );
 
     this.fireCallback(EncryptStep.Verify);
 
-    const verifyResults = await zk.verify(
-      zkVerifierUrl,
+    const verifyResults = await this.zk.verify(
+      this.zkVerifierUrl,
       proved,
-      sender,
+      this.sender,
       securityZone,
-      chainId,
+      this.chainId,
     );
 
     // Add securityZone and utype to the verify results
     const inItems: CoFheInItem[] = verifyResults.map(
       ({ ct_hash, signature }, index) => ({
         ctHash: BigInt(ct_hash),
-        securityZone: securityZone,
+        securityZone,
         utype: encryptableItems[index].utype,
         signature,
       }),
