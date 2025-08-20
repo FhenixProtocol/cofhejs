@@ -12,7 +12,7 @@ import { ZkPackProveVerify } from "./zkPackProveVerify";
 export class EncryptInputsBuilder<T extends any[]> {
   private sender: string;
   private chainId: string;
-  private securityZone?: number;
+  private securityZone: number;
   private stepCallback?: EncryptSetStateFn;
   private inputItems: [...T];
   private zkVerifierUrl: string;
@@ -22,12 +22,14 @@ export class EncryptInputsBuilder<T extends any[]> {
     inputs: [...T];
     sender: string;
     chainId: string;
+    securityZone?: number;
     zkVerifierUrl: string;
     zk: ZkPackProveVerify<any, any>;
   }) {
     this.inputItems = params.inputs;
     this.sender = params.sender;
     this.chainId = params.chainId;
+    this.securityZone = params.securityZone ?? 0;
     this.zkVerifierUrl = params.zkVerifierUrl;
     this.zk = params.zk;
   }
@@ -83,10 +85,6 @@ export class EncryptInputsBuilder<T extends any[]> {
     this.stepCallback(step);
   }
 
-  private getResolvedSecurityZone() {
-    return this.securityZone ?? 0;
-  }
-
   private getExtractedEncryptableItems() {
     return encryptExtract(this.inputItems);
   }
@@ -102,8 +100,6 @@ export class EncryptInputsBuilder<T extends any[]> {
   }
 
   async encrypt(): Promise<[...Encrypted_Inputs<T>]> {
-    const securityZone = this.getResolvedSecurityZone();
-
     this.fireCallback(EncryptStep.Extract);
 
     const encryptableItems = this.getExtractedEncryptableItems();
@@ -117,7 +113,7 @@ export class EncryptInputsBuilder<T extends any[]> {
     const proved = await this.zk.prove(
       builder,
       this.sender,
-      securityZone,
+      this.securityZone,
       this.chainId,
     );
 
@@ -127,7 +123,7 @@ export class EncryptInputsBuilder<T extends any[]> {
       this.zkVerifierUrl,
       proved,
       this.sender,
-      securityZone,
+      this.securityZone,
       this.chainId,
     );
 
@@ -135,7 +131,7 @@ export class EncryptInputsBuilder<T extends any[]> {
     const inItems: CoFheInItem[] = verifyResults.map(
       ({ ct_hash, signature }, index) => ({
         ctHash: BigInt(ct_hash),
-        securityZone,
+        securityZone: this.securityZone,
         utype: encryptableItems[index].utype,
         signature,
       }),
