@@ -21,9 +21,6 @@ import {
   CofhejsError,
   CofhejsErrorCode,
   wrapFunction,
-  Result,
-  ResultErr,
-  ResultOk,
 } from "../../types";
 import { mockDecrypt, mockSealOutput } from "./testnet";
 import { bytesToBigInt } from "../utils";
@@ -160,7 +157,11 @@ export const createPermit = async (
   const permit = await Permit.createAndSign(optionsWithDefaults, state.signer);
 
   permitStore.setPermit(state.chainId!, state.account!, permit);
-  permitStore.setActivePermitHash(state.chainId!, state.account!, permit.getHash());
+  permitStore.setActivePermitHash(
+    state.chainId!,
+    state.account!,
+    permit.getHash(),
+  );
 
   return permit;
 };
@@ -224,7 +225,11 @@ export const importPermit = async (
   }
 
   permitStore.setPermit(state.chainId!, state.account!, permit);
-  permitStore.setActivePermitHash(state.chainId!, state.account!, permit.getHash());
+  permitStore.setActivePermitHash(
+    state.chainId!,
+    state.account!,
+    permit.getHash(),
+  );
 
   return permit;
 };
@@ -248,7 +253,11 @@ export const selectActivePermit = (hash: string): Permit => {
       message: `Permit with hash <${hash}> not found`,
     });
 
-  permitStore.setActivePermitHash(state.chainId!, state.account!, permit.getHash());
+  permitStore.setActivePermitHash(
+    state.chainId!,
+    state.account!,
+    permit.getHash(),
+  );
 
   return permit;
 };
@@ -292,7 +301,7 @@ export const getPermit_asResult = wrapFunction(getPermit);
  * Removes a permit from the store based on its hash.
  * If removing the active permit and other permits exist, automatically sets a new active permit.
  * If removing the last permit, requires the `force` flag to be true, otherwise throws an error.
- * 
+ *
  * @param {string} hash - The `Permit.getHash` of the permit to remove.
  * @param {boolean} force - Optional flag to force removal of the last permit. Defaults to false.
  * @returns {string} - The hash of the removed permit.
@@ -307,7 +316,7 @@ export const removePermit = (hash: string, force?: boolean): string => {
     });
   }
 
-  try { 
+  try {
     permitStore.removePermit(state.chainId!, state.account!, hash, force);
   } catch (e) {
     throw new CofhejsError({

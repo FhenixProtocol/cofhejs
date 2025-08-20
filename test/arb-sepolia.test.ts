@@ -172,4 +172,28 @@ describe("Arbitrum Sepolia Tests", () => {
     console.log(nestedEncrypt);
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt);
   });
+
+  it("encryptInputs", { timeout: 320000 }, async () => {
+    await initSdkWithBob();
+
+    await cofhejs.createPermit({
+      type: "self",
+      issuer: bobAddress,
+    });
+
+    const logState = (state: EncryptStep) => {
+      console.log(`Log Encrypt State :: ${state}`);
+    };
+
+    const nestedEncrypt = await cofhejs
+      .encryptInputs([Encryptable.uint8("10")])
+      .setStepCallback(logState)
+      .encrypt();
+
+    type ExpectedEncryptedType = [CoFheInUint8];
+
+    console.log("bob address", bobAddress);
+    console.log(nestedEncrypt);
+    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt);
+  });
 });
