@@ -30,14 +30,8 @@ const unpackMetadata = (metadata: string) => {
 };
 const packVerifyResult = (item: EncryptableItem, metadata: string) => {
   return {
-    ct_hash: `${item.data}`,
+    ct_hash: BigInt(item.data).toString(),
     signature: metadata,
-  };
-};
-const unpackVerifyResult = (result: VerifyResult) => {
-  return {
-    ct_hash: result.ct_hash,
-    metadata: unpackMetadata(result.signature),
   };
 };
 
@@ -52,8 +46,8 @@ class MockZkListBuilder {
   }
 }
 
+// Implementation functions that track calls
 const mockZkPackImpl = (items: EncryptableItem[]): MockZkListBuilder => {
-  mockZkPack(items);
   return new MockZkListBuilder(items);
 };
 
@@ -81,21 +75,18 @@ const mockZkProveImpl = (
   securityZone: number,
   chainId: string,
 ): Promise<MockZkProvenList> => {
-  mockZkProve(builder, address, securityZone, chainId);
-
   const metadata = packMetadata(address, securityZone, chainId);
 
   return Promise.resolve(builder.prove(metadata));
 };
 
 const mockZkVerifyImpl = (
-  verifierUrl: string,
+  _verifierUrl: string,
   proved: MockZkProvenList,
-  address: string,
-  securityZone: number,
-  chainId: string,
+  _address: string,
+  _securityZone: number,
+  _chainId: string,
 ): Promise<VerifyResult[]> => {
-  mockZkVerify(verifierUrl, proved, address, securityZone, chainId);
   return Promise.resolve(proved.verify());
 };
 
@@ -114,15 +105,48 @@ describe("EncryptInputsBuilder", () => {
   let builder: EncryptInputsBuilder<[EncryptableUint128]>;
 
   beforeEach(() => {
-    // Reset all mocks before each test
-    mockZkPack.mockClear();
-    mockZkProve.mockClear();
-    mockZkVerify.mockClear();
+    // Reset all mocks
+    mockZkPack.mockReset();
+    mockZkProve.mockReset();
+    mockZkVerify.mockReset();
+
+    // Create wrapper functions that track calls and call the real implementations
+    const trackedZkPack = (items: EncryptableItem[]) => {
+      mockZkPack(items);
+      return mockZkPackImpl(items);
+    };
+
+    const trackedZkProve = async (
+      builder: MockZkListBuilder,
+      address: string,
+      securityZone: number,
+      chainId: string,
+    ) => {
+      mockZkProve(builder, address, securityZone, chainId);
+      return mockZkProveImpl(builder, address, securityZone, chainId);
+    };
+
+    const trackedZkVerify = async (
+      verifierUrl: string,
+      proved: MockZkProvenList,
+      address: string,
+      securityZone: number,
+      chainId: string,
+    ) => {
+      mockZkVerify(verifierUrl, proved, address, securityZone, chainId);
+      return mockZkVerifyImpl(
+        verifierUrl,
+        proved,
+        address,
+        securityZone,
+        chainId,
+      );
+    };
 
     const mockZkPackProveVerify = new ZkPackProveVerify(
-      mockZkPackImpl,
-      mockZkProveImpl,
-      mockZkVerifyImpl,
+      trackedZkPack,
+      trackedZkProve,
+      trackedZkVerify,
     );
     defaultParams.zk = mockZkPackProveVerify;
     builder = new EncryptInputsBuilder(defaultParams);
@@ -361,13 +385,17 @@ describe("EncryptInputsBuilder", () => {
     });
 
     it("should handle ZK prove errors gracefully", async () => {
-      mockZkProve.mockRejectedValue(new Error("ZK prove failed"));
+      mockZkProve.mockImplementation(() => {
+        throw new Error("ZK prove failed");
+      });
 
       await expect(builder.encrypt()).rejects.toThrow("ZK prove failed");
     });
 
     it("should handle ZK verify errors gracefully", async () => {
-      mockZkVerify.mockRejectedValue(new Error("ZK verify failed"));
+      mockZkVerify.mockImplementation(() => {
+        throw new Error("ZK verify failed");
+      });
 
       await expect(builder.encrypt()).rejects.toThrow("ZK verify failed");
     });
