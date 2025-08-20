@@ -99,6 +99,17 @@ export class EncryptInputsBuilder<T extends any[]> {
     });
   }
 
+  /**
+   * Final step of the encryption process. MUST BE CALLED LAST IN THE CHAIN.
+   *
+   * This will:
+   * - Extract the encryptable items from the inputs
+   * - Pack the encryptable items into a zk proof
+   * - Prove the zk proof
+   * - Verify the zk proof
+   *
+   * @returns The encrypted inputs.
+   */
   async encrypt(): Promise<[...Encrypted_Inputs<T>]> {
     this.fireCallback(EncryptStep.Extract);
 
