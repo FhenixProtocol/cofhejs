@@ -127,11 +127,6 @@ async function initializeWithEthers(
   });
 }
 
-let overriddenAccount: string | undefined;
-const encryptOverrideAccount = (account: string) => {
-  overriddenAccount = account;
-};
-
 // NOTE: This function returns the result type directly
 // Usually we use wrapFunctionAsync to wrap this function
 // but in this case the input types are too complex
@@ -171,9 +166,6 @@ async function encrypt<T extends any[]>(
 
     const { fhePublicKey, crs, verifierUrl, account, chainId } = keysResult;
 
-    const accountOrOverride = overriddenAccount ?? account;
-    console.log("accountOrOverride", accountOrOverride);
-
     const encryptableItems = encryptExtract(item);
 
     setStateCallback(EncryptStep.Pack);
@@ -188,7 +180,7 @@ async function encrypt<T extends any[]>(
     const proved = await zkProve(
       builder,
       CompactPkeCrs.deserialize(crs),
-      accountOrOverride,
+      account,
       securityZone,
       chainId,
     );
@@ -198,7 +190,7 @@ async function encrypt<T extends any[]>(
     const verifyResults = await zkVerify(
       verifierUrl,
       proved,
-      accountOrOverride,
+      account,
       securityZone,
       chainId,
     );
@@ -308,7 +300,4 @@ export const cofhejs = {
 
   unseal: wrapFunctionAsync(unseal),
   decrypt: wrapFunctionAsync(decrypt),
-
-  // TEMP
-  encryptOverrideAccount,
 };
