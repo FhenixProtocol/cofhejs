@@ -252,6 +252,8 @@ async function encrypt<T extends any[]>(
 export function encryptInputs<T extends any[]>(
   inputs: [...T],
 ): EncryptInputsBuilder<[...T]> {
+  const state = _sdkStore.getState();
+
   const { fhePublicKey, crs, verifierUrl, account, chainId } = encryptGetKeys();
 
   const _zkPack = (items: EncryptableItem[]) => {
@@ -279,6 +281,7 @@ export function encryptInputs<T extends any[]>(
     inputs,
     sender: account,
     chainId,
+    isTestnet: state.isTestnet,
     zkVerifierUrl: verifierUrl,
     zk: zkPackProveVerify,
   });

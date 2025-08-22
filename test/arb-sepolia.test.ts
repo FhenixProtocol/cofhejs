@@ -181,19 +181,16 @@ describe("Arbitrum Sepolia Tests", () => {
       issuer: bobAddress,
     });
 
-    const logState = (state: EncryptStep) => {
-      console.log(`Log Encrypt State :: ${state}`);
-    };
-
-    const nestedEncrypt = await cofhejs
+    const encryptResult = await cofhejs
       .encryptInputs([Encryptable.uint8("10")])
-      .setStepCallback(logState)
       .encrypt();
+
+    const encryptData = expectResultSuccess(encryptResult);
 
     type ExpectedEncryptedType = [CoFheInUint8];
 
     console.log("bob address", bobAddress);
-    console.log(nestedEncrypt);
-    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt);
+    console.log(encryptData);
+    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(encryptData);
   });
 });

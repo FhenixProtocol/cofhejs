@@ -4,14 +4,19 @@ import {
   EncryptSetStateFn,
   CoFheInItem,
   Encrypted_Inputs,
+  Result,
+  ResultOk,
+  ResultErrOrInternal,
 } from "../../types";
 import { encryptExtract, encryptReplace } from "../sdk/index";
 import { CofhejsError, CofhejsErrorCode } from "../../types";
 import { ZkPackProveVerify } from "./zkPackProveVerify";
+import { mockEncrypt } from "../sdk/testnet";
 
 export class EncryptInputsBuilder<T extends any[]> {
   private sender: string;
   private chainId: string;
+  private isTestnet: boolean;
   private securityZone: number;
   private stepCallback?: EncryptSetStateFn;
   private inputItems: [...T];
@@ -22,6 +27,7 @@ export class EncryptInputsBuilder<T extends any[]> {
     inputs: [...T];
     sender: string;
     chainId: string;
+    isTestnet: boolean;
     securityZone?: number;
     zkVerifierUrl: string;
     zk: ZkPackProveVerify<any, any>;
@@ -29,6 +35,7 @@ export class EncryptInputsBuilder<T extends any[]> {
     this.inputItems = params.inputs;
     this.sender = params.sender;
     this.chainId = params.chainId;
+    this.isTestnet = params.isTestnet;
     this.securityZone = params.securityZone ?? 0;
     this.zkVerifierUrl = params.zkVerifierUrl;
     this.zk = params.zk;
@@ -107,6 +114,15 @@ export class EncryptInputsBuilder<T extends any[]> {
     });
   }
 
+  private async mockEncrypt() {
+    const mockEncryptResult = await mockEncrypt(
+      this.inputItems,
+      this.securityZone,
+      this.stepCallback,
+    );
+    return ResultOk(mockEncryptResult);
+  }
+
   /**
    * Final step of the encryption process. MUST BE CALLED LAST IN THE CHAIN.
    *
@@ -118,50 +134,62 @@ export class EncryptInputsBuilder<T extends any[]> {
    *
    * @returns The encrypted inputs.
    */
-  async encrypt(): Promise<[...Encrypted_Inputs<T>]> {
-    this.fireCallback(EncryptStep.Extract);
+  async encrypt(): Promise<Result<[...Encrypted_Inputs<T>]>> {
+    try {
+      if (this.isTestnet) {
+        return this.mockEncrypt();
+      }
+    } catch (error) {
+      return ResultErrOrInternal(error);
+    }
 
-    const encryptableItems = this.getExtractedEncryptableItems();
+    try {
+      this.fireCallback(EncryptStep.Extract);
 
-    this.fireCallback(EncryptStep.Pack);
+      const encryptableItems = this.getExtractedEncryptableItems();
 
-    const builder = this.zk.pack(encryptableItems);
+      this.fireCallback(EncryptStep.Pack);
 
-    this.fireCallback(EncryptStep.Prove);
+      const builder = this.zk.pack(encryptableItems);
 
-    const proved = await this.zk.prove(
-      builder,
-      this.sender,
-      this.securityZone,
-      this.chainId,
-    );
+      this.fireCallback(EncryptStep.Prove);
 
-    this.fireCallback(EncryptStep.Verify);
+      const proved = await this.zk.prove(
+        builder,
+        this.sender,
+        this.securityZone,
+        this.chainId,
+      );
 
-    const verifyResults = await this.zk.verify(
-      this.zkVerifierUrl,
-      proved,
-      this.sender,
-      this.securityZone,
-      this.chainId,
-    );
+      this.fireCallback(EncryptStep.Verify);
 
-    // Add securityZone and utype to the verify results
-    const inItems: CoFheInItem[] = verifyResults.map(
-      ({ ct_hash, signature }, index) => ({
-        ctHash: BigInt(ct_hash),
-        securityZone: this.securityZone,
-        utype: encryptableItems[index].utype,
-        signature,
-      }),
-    );
+      const verifyResults = await this.zk.verify(
+        this.zkVerifierUrl,
+        proved,
+        this.sender,
+        this.securityZone,
+        this.chainId,
+      );
 
-    this.fireCallback(EncryptStep.Replace);
+      // Add securityZone and utype to the verify results
+      const inItems: CoFheInItem[] = verifyResults.map(
+        ({ ct_hash, signature }, index) => ({
+          ctHash: BigInt(ct_hash),
+          securityZone: this.securityZone,
+          utype: encryptableItems[index].utype,
+          signature,
+        }),
+      );
 
-    const preparedInputItems = this.replaceEncryptableItems(inItems);
+      this.fireCallback(EncryptStep.Replace);
 
-    this.fireCallback(EncryptStep.Done);
+      const preparedInputItems = this.replaceEncryptableItems(inItems);
 
-    return preparedInputItems;
+      this.fireCallback(EncryptStep.Done);
+
+      return ResultOk(preparedInputItems);
+    } catch (error) {
+      return ResultErrOrInternal(error);
+    }
   }
 }

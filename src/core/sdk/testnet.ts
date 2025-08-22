@@ -172,9 +172,9 @@ async function mockZkVerifySign(
 export async function mockEncrypt<T extends any[]>(
   item: [...T],
   securityZone = 0,
-  setStateCallback: EncryptSetStateFn,
+  setStateCallback?: EncryptSetStateFn,
 ): Promise<[...Encrypted_Inputs<T>]> {
-  setStateCallback(EncryptStep.Extract);
+  setStateCallback?.(EncryptStep.Extract);
 
   const state = _sdkStore.getState();
 
@@ -204,16 +204,16 @@ export async function mockEncrypt<T extends any[]>(
 
   const encryptableItems = encryptExtract(item);
 
-  setStateCallback(EncryptStep.Pack);
+  setStateCallback?.(EncryptStep.Pack);
 
   // Sleep to avoid rate limiting
   await sleep(100);
 
-  setStateCallback(EncryptStep.Prove);
+  setStateCallback?.(EncryptStep.Prove);
 
   await sleep(500);
 
-  setStateCallback(EncryptStep.Verify);
+  setStateCallback?.(EncryptStep.Verify);
 
   await sleep(500);
 
@@ -235,7 +235,7 @@ export async function mockEncrypt<T extends any[]>(
     }),
   );
 
-  setStateCallback(EncryptStep.Replace);
+  setStateCallback?.(EncryptStep.Replace);
 
   const [preparedInputItems, remainingInItems] = encryptReplace(item, inItems);
 
@@ -245,7 +245,7 @@ export async function mockEncrypt<T extends any[]>(
       message: "Some encrypted inputs remaining after replacement",
     });
 
-  setStateCallback(EncryptStep.Done);
+  setStateCallback?.(EncryptStep.Done);
 
   return preparedInputItems;
 }

@@ -8,7 +8,10 @@ import {
   EncryptableItem,
   EncryptableUint128,
   FheTypes,
+  Result,
   VerifyResult,
+  CofhejsErrorCode,
+  CofhejsError,
 } from "../../types";
 import { ZkPackProveVerify } from "./zkPackProveVerify";
 
@@ -90,11 +93,37 @@ const mockZkVerifyImpl = (
   return Promise.resolve(proved.verify());
 };
 
+export const expectResultSuccess = <T>(result: Result<T>): T => {
+  expect(result.error).toBe(null);
+  expect(result.success).toBe(true);
+  expect(result.data).not.toBe(null);
+  return result.data as T;
+};
+
+export const expectResultError = <T>(
+  result: Result<T>,
+  errorCode?: CofhejsErrorCode,
+  errorMessage?: string,
+): void => {
+  expect(result.success).toBe(false);
+  expect(result.data).toBe(null);
+  expect(result.error).not.toBe(null);
+  const error = result.error as CofhejsError;
+  expect(error).toBeInstanceOf(CofhejsError);
+  if (errorCode) {
+    expect(error.code).toBe(errorCode);
+  }
+  if (errorMessage) {
+    expect(error.message).toBe(errorMessage);
+  }
+};
+
 describe("EncryptInputsBuilder", () => {
   const defaultParams = {
     inputs: [Encryptable.uint128(100n)] as [EncryptableUint128],
     sender: "0x1234567890123456789012345678901234567890",
     chainId: "1",
+    isTestnet: false,
     zkVerifierUrl: "http://localhost:3001",
     zk: new ZkPackProveVerify(
       mockZkPackImpl,
@@ -162,6 +191,7 @@ describe("EncryptInputsBuilder", () => {
         inputs: defaultParams.inputs,
         sender: defaultParams.sender,
         chainId: defaultParams.chainId,
+        isTestnet: false,
         zkVerifierUrl: defaultParams.zkVerifierUrl,
         zk: defaultParams.zk,
         securityZone: undefined,
@@ -239,7 +269,7 @@ describe("EncryptInputsBuilder", () => {
       const stepCallback = vi.fn();
       builder.setStepCallback(stepCallback);
 
-      const result = await builder.encrypt();
+      const result = expectResultSuccess(await builder.encrypt());
 
       // Verify step callbacks were called in order
       expect(stepCallback).toHaveBeenCalledTimes(6);
@@ -289,7 +319,7 @@ describe("EncryptInputsBuilder", () => {
       const overriddenSender = "0x5555555555555555555555555555555555555555";
       builder.setSender(overriddenSender);
 
-      const result = await builder.encrypt();
+      const result = expectResultSuccess(await builder.encrypt());
 
       expect(mockZkProve).toHaveBeenCalledWith(
         expect.any(MockZkListBuilder),
@@ -318,7 +348,7 @@ describe("EncryptInputsBuilder", () => {
       const overriddenZone = 7;
       builder.setSecurityZone(overriddenZone);
 
-      const result = await builder.encrypt();
+      const result = expectResultSuccess(await builder.encrypt());
 
       expect(mockZkProve).toHaveBeenCalledWith(
         expect.any(MockZkListBuilder),
@@ -345,7 +375,7 @@ describe("EncryptInputsBuilder", () => {
 
     it("should work without step callback", async () => {
       // No step callback set
-      const result = await builder.encrypt();
+      const result = expectResultSuccess(await builder.encrypt());
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -360,11 +390,12 @@ describe("EncryptInputsBuilder", () => {
         ],
         sender: defaultParams.sender,
         chainId: defaultParams.chainId,
+        isTestnet: false,
         zkVerifierUrl: defaultParams.zkVerifierUrl,
         zk: defaultParams.zk,
       });
 
-      const result = await multiInputBuilder.encrypt();
+      const result = expectResultSuccess(await multiInputBuilder.encrypt());
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
@@ -381,7 +412,12 @@ describe("EncryptInputsBuilder", () => {
         throw new Error("ZK pack failed");
       });
 
-      await expect(builder.encrypt()).rejects.toThrow("ZK pack failed");
+      const result = await builder.encrypt();
+      expectResultError(
+        result,
+        CofhejsErrorCode.InternalError,
+        "ZK pack failed",
+      );
     });
 
     it("should handle ZK prove errors gracefully", async () => {
@@ -389,7 +425,12 @@ describe("EncryptInputsBuilder", () => {
         throw new Error("ZK prove failed");
       });
 
-      await expect(builder.encrypt()).rejects.toThrow("ZK prove failed");
+      const result = await builder.encrypt();
+      expectResultError(
+        result,
+        CofhejsErrorCode.InternalError,
+        "ZK prove failed",
+      );
     });
 
     it("should handle ZK verify errors gracefully", async () => {
@@ -397,7 +438,12 @@ describe("EncryptInputsBuilder", () => {
         throw new Error("ZK verify failed");
       });
 
-      await expect(builder.encrypt()).rejects.toThrow("ZK verify failed");
+      const result = await builder.encrypt();
+      expectResultError(
+        result,
+        CofhejsErrorCode.InternalError,
+        "ZK verify failed",
+      );
     });
   });
 
@@ -412,6 +458,7 @@ describe("EncryptInputsBuilder", () => {
         .setSecurityZone(securityZone)
         .setStepCallback(stepCallback)
         .encrypt();
+      const resultData = expectResultSuccess(result);
 
       expect(result).toBeDefined();
       expect(stepCallback).toHaveBeenCalledTimes(6);
@@ -423,7 +470,7 @@ describe("EncryptInputsBuilder", () => {
       );
 
       // Verify result embedded metadata
-      const [encrypted] = result;
+      const [encrypted] = resultData;
       const encryptedMetadata = unpackMetadata(encrypted.signature);
       expect(encryptedMetadata).toBeDefined();
       expect(encryptedMetadata.signer).toBe(sender);
@@ -439,8 +486,8 @@ describe("EncryptInputsBuilder", () => {
       builder.setSecurityZone(securityZone);
 
       // Call encrypt multiple times to ensure state is maintained
-      const result1 = await builder.encrypt();
-      const result2 = await builder.encrypt();
+      const result1 = expectResultSuccess(await builder.encrypt());
+      const result2 = expectResultSuccess(await builder.encrypt());
 
       expect(result1).toBeDefined();
       expect(result2).toBeDefined();
