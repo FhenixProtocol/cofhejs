@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CompactPkeCrs, TfheCompactPublicKey } from "node-tfhe";
+import {
+  CompactCiphertextListBuilder,
+  CompactPkeCrs,
+  TfheCompactPublicKey,
+} from "node-tfhe";
 import {
   createPermit,
   encryptExtract,
@@ -31,6 +35,7 @@ import {
   Permission,
   ResultOk,
   ResultErrOrInternal,
+  EncryptableItem,
 } from "../types";
 import { initTfhe } from "./init";
 import { zkPack, zkProve, zkVerify } from "./zkPoK";
@@ -43,6 +48,8 @@ import {
   ViemInitializerParams,
 } from "../core/sdk/initializers";
 import { marshallEncryptParams } from "../core/utils";
+import { ZkPackProveVerify } from "../core/encrypt/zkPackProveVerify";
+import { EncryptInputsBuilder } from "../core/encrypt/encryptInput";
 
 /**
  * Initializes the `cofhejs` to enable encrypting input data, creating permits / permissions, and decrypting sealed outputs.
@@ -123,6 +130,9 @@ async function initializeWithEthers(
 // NOTE: This function returns the result type directly
 // Usually we use wrapFunctionAsync to wrap this function
 // but in this case the input types are too complex
+/**
+ * @deprecated This function is deprecated. Use {@link encryptInputs} instead for better type safety and improved functionality.
+ */
 async function encrypt<T extends any[]>(
   item: [...T],
   setStateCallback?: (state: EncryptStep) => void,
@@ -218,6 +228,60 @@ async function encrypt<T extends any[]>(
   }
 }
 
+/**
+ * Creates a new EncryptInputsBuilder instance for chaining encryption operations.
+ * This starts the function chaining pattern for encrypting inputs.
+ *
+ * @returns {EncryptInputsBuilder} A builder instance for configuring and executing encryption
+ *
+ * @example
+ * ```typescript
+ * const encrypted = await cofhejs
+ *   .encryptInputs([Encryptable.uint128(value)])
+ *   .setSender(paymasterData.address)
+ *   .setSecurityZone(0)
+ *   .setStepCallback((step) => console.log(step))
+ *   .encrypt();
+ * ```
+ */
+export function encryptInputs<T extends any[]>(
+  inputs: [...T],
+): EncryptInputsBuilder<[...T]> {
+  const state = _sdkStore.getState();
+
+  const { fhePublicKey, crs, verifierUrl, account, chainId } = encryptGetKeys();
+
+  const _zkPack = (items: EncryptableItem[]) => {
+    return zkPack(items, TfheCompactPublicKey.deserialize(fhePublicKey));
+  };
+
+  const _zkProve = (
+    builder: CompactCiphertextListBuilder,
+    address: string,
+    securityZone: number,
+    chainId: string,
+  ) => {
+    return zkProve(
+      builder,
+      CompactPkeCrs.deserialize(crs),
+      address,
+      securityZone,
+      chainId,
+    );
+  };
+
+  const zkPackProveVerify = new ZkPackProveVerify(_zkPack, _zkProve, zkVerify);
+
+  return new EncryptInputsBuilder<[...T]>({
+    inputs,
+    sender: account,
+    chainId,
+    isTestnet: state.isTestnet,
+    zkVerifierUrl: verifierUrl,
+    zk: zkPackProveVerify,
+  });
+}
+
 export const cofhejs = {
   store: _sdkStore,
   initialize: wrapFunctionAsync(initialize),
@@ -235,8 +299,8 @@ export const cofhejs = {
   getAllPermits: wrapFunction(getAllPermits),
 
   encrypt: encrypt,
+  encryptInputs: encryptInputs,
 
   unseal: wrapFunctionAsync(unseal),
   decrypt: wrapFunctionAsync(decrypt),
-
 };

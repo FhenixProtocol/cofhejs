@@ -143,6 +143,11 @@ describe("Arbitrum Sepolia Tests", () => {
       console.log(`Log Encrypt State :: ${state}`);
     };
 
+    console.log(
+      "TEST TEST TEST\n\n\n\nTEST TEST TEST TEST\n\n\n\nTEST TEST TEST",
+    );
+    cofhejs.encryptOverrideAccount("0xABCDEF");
+
     const nestedEncryptResult = await cofhejs.encrypt(
       [
         { a: Encryptable.bool(false), b: Encryptable.uint64(10n), c: "hello" },
@@ -166,5 +171,26 @@ describe("Arbitrum Sepolia Tests", () => {
     console.log("bob address", bobAddress);
     console.log(nestedEncrypt);
     expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(nestedEncrypt);
+  });
+
+  it("encryptInputs", { timeout: 320000 }, async () => {
+    await initSdkWithBob();
+
+    await cofhejs.createPermit({
+      type: "self",
+      issuer: bobAddress,
+    });
+
+    const encryptResult = await cofhejs
+      .encryptInputs([Encryptable.uint8("10")])
+      .encrypt();
+
+    const encryptData = expectResultSuccess(encryptResult);
+
+    type ExpectedEncryptedType = [CoFheInUint8];
+
+    console.log("bob address", bobAddress);
+    console.log(encryptData);
+    expectTypeOf<ExpectedEncryptedType>().toEqualTypeOf(encryptData);
   });
 });

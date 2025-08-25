@@ -27,6 +27,8 @@ export enum CofhejsErrorCode {
   ZkVerifySignFailed = "ZK_VERIFY_SIGN_FAILED",
   ZkVerifyFailed = "ZK_VERIFY_FAILED",
   EncryptRemainingInItems = "ENCRYPT_REMAINING_IN_ITEMS",
+  ZkUninitialized = "ZK_UNINITIALIZED",
+  ZkVerifierUrlUninitialized = "ZK_VERIFIER_URL_UNINITIALIZED",
 }
 
 export class CofhejsError extends Error {
