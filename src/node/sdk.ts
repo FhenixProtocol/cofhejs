@@ -130,6 +130,9 @@ async function initializeWithEthers(
 // NOTE: This function returns the result type directly
 // Usually we use wrapFunctionAsync to wrap this function
 // but in this case the input types are too complex
+/**
+ * @deprecated This function is deprecated. Use {@link encryptInputs} instead for better type safety and improved functionality.
+ */
 async function encrypt<T extends any[]>(
   item: [...T],
   setStateCallback?: (state: EncryptStep) => void,
