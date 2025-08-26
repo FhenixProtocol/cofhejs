@@ -14,6 +14,7 @@ import {
   _store_getCrs,
   _store_isTestnet,
 } from "../src/core/sdk/store";
+import { _permitStore } from "../src/core/permit/store";
 import { MockProvider, MockSigner, BobWallet } from "./utils";
 
 describe("Store Node.js Tests", () => {
