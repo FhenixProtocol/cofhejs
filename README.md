@@ -15,6 +15,30 @@
   <a href="https://fhenixjs.fhenix.zone" target="_blank"><strong>Explore the Docs »</strong></a>
 </p>
 
+## Module Resolution Compatibility
+
+This package supports both legacy and modern TypeScript module resolution:
+
+### Legacy Module Resolution (`moduleResolution: "node"`)
+```typescript
+// Default import (uses web build)
+import { cofhejs } from 'cofhejs';
+
+// Direct path access (bypasses exports)
+import { cofhejs } from 'cofhejs/dist/web';
+import { cofhejs } from 'cofhejs/dist/node';
+```
+
+### Modern Module Resolution (`moduleResolution: "node16"` or `"nodenext"`)
+```typescript
+// All import paths work
+import { cofhejs } from 'cofhejs';        // Main entry (web)
+import { cofhejs } from 'cofhejs/web';    // Web-specific build
+import { cofhejs } from 'cofhejs/node';   // Node-specific build
+```
+
+**Note:** The web build is the default for legacy compatibility. Use `cofhejs/node` for Node.js-specific features.
+
 ## General
 
 fhenix.js allows developers to add support for encrypted data when developing dApps on Fhenix.
