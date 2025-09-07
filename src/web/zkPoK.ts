@@ -92,6 +92,19 @@ export const zkPack = (
   return builder;
 };
 
+// Force multiple event loop cycles to ensure UI updates
+const forceUIUpdate = async (cycles: number = 3): Promise<void> => {
+  for (let i = 0; i < cycles; i++) {
+    await new Promise(resolve => {
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(() => setTimeout(resolve, 0));
+      } else {
+        setTimeout(resolve, 16); // ~60fps
+      }
+    });
+  }
+};
+
 export const zkProve = async (
   builder: CompactCiphertextListBuilder,
   crs: CompactPkeCrs,
@@ -105,16 +118,28 @@ export const zkProve = async (
     parseInt(chainId),
   );
 
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const compactList = builder.build_with_proof_packed(
-        crs,
-        metadata,
-        ZkComputeLoad.Verify,
-      );
-
-      resolve(compactList);
-    }, 0);
+  console.log("Starting zkProve - forcing UI updates...");
+  
+  // Force multiple UI update cycles before the blocking operation
+  await forceUIUpdate(5);
+  console.log("About to start heavy WASM computation (this will block)...");
+  
+  // Give one final chance for UI to update
+  return new Promise<ProvenCompactCiphertextList>(resolve => {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        console.log("🔥 Executing build_with_proof_packed (blocking operation)...");
+        
+        const compactList = builder.build_with_proof_packed(
+          crs,
+          metadata,
+          ZkComputeLoad.Verify,
+        );
+        
+        console.log("✅ build_with_proof_packed completed");
+        resolve(compactList);
+      }, 50); // Give 50ms for final UI updates
+    });
   });
 };
 
