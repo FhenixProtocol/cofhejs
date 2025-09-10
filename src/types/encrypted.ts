@@ -29,12 +29,10 @@ export type CoFheInUint64 = CoFheInItem & {
 export type CoFheInUint128 = CoFheInItem & {
   utype: FheTypes.Uint128;
 };
-/**
- * @deprecated High precision uints will not supported in the future, max size is u128.
- */
-export type CoFheInUint256 = CoFheInItem & {
-  utype: FheTypes.Uint256;
-};
+// [U256-DISABLED]
+// export type CoFheInUint256 = CoFheInItem & {
+//   utype: FheTypes.Uint256;
+// };
 export type CoFheInAddress = CoFheInItem & {
   utype: FheTypes.Uint160;
 };
