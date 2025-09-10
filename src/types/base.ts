@@ -44,6 +44,7 @@ export const FheUintUTypes = [
   FheTypes.Uint32,
   FheTypes.Uint64,
   FheTypes.Uint128,
+  // [U256-DISABLED]
   // FheTypes.Uint256,
 ] as const;
 
@@ -57,6 +58,7 @@ export const FheAllUTypes = [
   FheTypes.Uint32,
   FheTypes.Uint64,
   FheTypes.Uint128,
+  // [U256-DISABLED]
   // FheTypes.Uint256,
   FheTypes.Uint160,
 ] as const;
