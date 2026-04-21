@@ -1,3 +1,9 @@
+⚠️ THIS REPOSITORY IS ARCHIVED
+This SDK is no longer maintained.
+Please use the new SDK instead: https://github.com/FhenixProtocol/cofhesdk
+
+This repository remains for historical reference only.
+
 <p align="center">
   <img src="./media/fhnx_cover.svg#gh-light-mode-only" type="image/svg+xml" width="75%"/>
 </p>
