@@ -35,6 +35,9 @@ export type EncryptableUint128 = {
   data: string | bigint;
   utype: FheTypes.Uint128;
 };
+/**
+ * @deprecated High precision uints will not supported in the future, max size is u128.
+ */
 export type EncryptableUint256 = {
   data: string | bigint;
   utype: FheTypes.Uint256;
@@ -59,6 +62,9 @@ export const Encryptable = {
     ({ data, securityZone, utype: FheTypes.Uint64 }) as EncryptableUint64,
   uint128: (data: EncryptableUint128["data"], securityZone = 0) =>
     ({ data, securityZone, utype: FheTypes.Uint128 }) as EncryptableUint128,
+  /**
+   * @deprecated High precision uints will not supported in the future, max size is u128.
+   */
   uint256: (data: EncryptableUint256["data"], securityZone = 0) =>
     ({ data, securityZone, utype: FheTypes.Uint256 }) as EncryptableUint256,
 } as const;

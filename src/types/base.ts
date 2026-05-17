@@ -7,6 +7,9 @@ export enum FheTypes {
   Uint64 = 5,
   Uint128 = 6,
   Uint160 = 7,
+  /**
+   * @deprecated High precision uints will not supported in the future, max size is u128.
+   */
   Uint256 = 8,
   Uint512 = 9,
   Uint1024 = 10,
