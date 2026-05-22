@@ -29,9 +29,10 @@ export type CoFheInUint64 = CoFheInItem & {
 export type CoFheInUint128 = CoFheInItem & {
   utype: FheTypes.Uint128;
 };
-export type CoFheInUint256 = CoFheInItem & {
-  utype: FheTypes.Uint256;
-};
+// [U256-DISABLED]
+// export type CoFheInUint256 = CoFheInItem & {
+//   utype: FheTypes.Uint256;
+// };
 export type CoFheInAddress = CoFheInItem & {
   utype: FheTypes.Uint160;
 };

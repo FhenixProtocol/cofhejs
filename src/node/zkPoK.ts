@@ -11,7 +11,6 @@ import {
   MAX_UINT32,
   MAX_UINT64,
   MAX_UINT128,
-  MAX_UINT256,
 } from "../core/utils/consts";
 import {
   toBigIntOrThrow,
@@ -72,12 +71,13 @@ export const zkPack = (
         builder.push_u128(bint);
         break;
       }
-      case FheTypes.Uint256: {
-        const bint = toBigIntOrThrow(item.data);
-        validateBigIntInRange(bint, MAX_UINT256);
-        builder.push_u256(bint);
-        break;
-      }
+      // [U256-DISABLED]
+      // case FheTypes.Uint256: {
+      //   const bint = toBigIntOrThrow(item.data);
+      //   validateBigIntInRange(bint, MAX_UINT256);
+      //   builder.push_u256(bint);
+      //   break;
+      // }
       case FheTypes.Uint160: {
         const bint =
           typeof item.data === "string"
