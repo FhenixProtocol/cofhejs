@@ -9,32 +9,32 @@ This repository remains for historical reference only.
 </p>
 
 <p align="center">
-  The JavaScript SDK for Fhenix
+  The JavaScript SDK for CoFHE by Fhenix
 </p>
 
 <p align="center">
-  <img alt="npm" src="https://img.shields.io/npm/v/fhenixjs" />
-  <img alt="ci" style="margin-left: 0.3em" src="https://github.com/fhenixprotocol/fhenix.js/actions/workflows/test.yml/badge.svg?branch=main" />
+  <img alt="npm" src="https://img.shields.io/npm/v/cofhejs" />
+  <img alt="ci" style="margin-left: 0.3em" src="https://github.com/FhenixProtocol/cofhejs/actions/workflows/test.yml/badge.svg?branch=main" />
 </p>
 
 <p align="center">
-  <a href="https://fhenixjs.fhenix.zone" target="_blank"><strong>Explore the Docs »</strong></a>
+  <a href="https://cofhe-docs.fhenix.zone" target="_blank"><strong>Explore the Docs »</strong></a>
 </p>
 
 ## General
 
-fhenix.js allows developers to add support for encrypted data when developing dApps on Fhenix.
-fhenix.js includes easy helpers for encryption, unsealing and helpers to create apps that utilize private data.
+cofhejs allows developers to add support for encrypted data when developing dApps with CoFHE.
+cofhejs includes easy helpers for encryption, unsealing, and permits to create apps that utilize private data.
 
 ## Installation
 
 ### NodeJS
 
-(only node 20+ is supported until I fix this)
+Node.js 20+ is required.
 
 ```bash
 # Using npm
-npm install fhenixjs
+npm install cofhejs
 ```
 
 ### Browser Installation (or simpler bundling)
@@ -44,7 +44,7 @@ which is available in the ./dist/ folder in this repo.
 
 You can also install from a CDN e.g.
 
-`https://cdn.jsdelivr.net/npm/fhenixjs@0.3.0-alpha.1/dist/fhenix.umd.min.js`
+`https://cdn.jsdelivr.net/npm/cofhejs/dist/fhenix.umd.min.js`
 
 #### ESM
 
@@ -52,7 +52,7 @@ You can install as a module:
 
 ```
 <script type="module">
-    import { fhenixjs } from "./dist/fhenix.esm.min.js";
+    import { cofhejs } from "cofhejs/web";
 </script>
 ```
 
@@ -66,11 +66,11 @@ Or from a UMD:
 
 #### NextJS WASM Bundling
 
-FhenixJS uses WASM for all the FHE goodness. If you're using the non-prepackaged version you'll need to configure next.js to properly use WASM via the `next.config.js` file. 
+cofhejs uses WASM for all the FHE goodness. If you're using the non-prepackaged version you'll need to configure next.js to properly use WASM via the `next.config.js` file. 
 
 Otherwise, you can use the prepackaged version above that avoids having to bundle WASM.
 
-Here's a working config I managed to conjure up from various Github and StackOverflow issues (please suggest improvements):
+Here's a working Next.js WASM configuration:
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -119,7 +119,7 @@ Also, if you had to fiddle with a bundler or config to get it working, please sh
 
 #### Mobile Support
 
-Completely untested. Maybe yes, maybe no, maybe both.
+Not officially supported yet.
 
 ## fhenix.js sdk
 
@@ -387,4 +387,4 @@ if (savedPermit) {
 }
 ```
 
-For more advanced use cases and detailed API documentation, please refer to our [full documentation](https://fhenixjs.fhenix.zone).
+For more advanced use cases and detailed API documentation, please refer to our [full documentation](https://cofhe-docs.fhenix.zone).
